@@ -1056,6 +1056,17 @@ button.chip:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1p
   overflow: hidden;
   background: linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 78%, #2a7fc9 100%);
 }
+.home {
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+}
+.home-sky-tint {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(43, 35, 80, 0.08), rgba(43, 35, 80, 0) 30%);
+  pointer-events: none;
+}
 .splash {
   position: absolute;
   inset: 0;
@@ -1279,6 +1290,59 @@ button.chip:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1p
   margin: 8px 0 14px;
 }
 .tut-center-card .tut-controls { justify-content: space-between; }
+
+
+/* ================= Clean mobile-game menu ================= */
+.home-inner.menu { gap: 18px; }
+.menu-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.menu-sq {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 86px;
+  padding: 10px 6px 8px;
+  border-radius: 16px;
+  font-size: 11.5px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.94);
+}
+.menu-ic { font-size: 24px; line-height: 1.15; display: flex; align-items: center; justify-content: center; height: 28px; }
+.menu-pfp { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--ink); }
+.sol-grad {
+  background: linear-gradient(135deg, var(--sol-green), var(--sol-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 800;
+}
+
+/* ================= Leaderboard ================= */
+.leader-list { display: flex; flex-direction: column; gap: 6px; }
+.leader-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 13px;
+  background: var(--card-2);
+  border: 2.5px solid var(--card-2);
+  font-weight: 800;
+  font-size: 13px;
+}
+.leader-row.me { background: #fff6dd; border-color: var(--gold-2); }
+.leader-rank { width: 22px; text-align: center; color: var(--muted); font-size: 12.5px; }
+.leader-row:nth-child(1) .leader-rank { color: #e08f00; }
+.leader-pfp { font-size: 19px; width: 26px; text-align: center; }
+.leader-pfp img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--ink); }
+.leader-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leader-rev { white-space: nowrap; }
+.leader-rev small { color: var(--muted); font-size: 10px; }
 
 /* ================= Mobile ================= */
 @media (max-width: 560px) {

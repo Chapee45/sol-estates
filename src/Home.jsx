@@ -1,69 +1,68 @@
 import { useMemo, useRef, useState } from 'react'
 import logo from './assets/logo-sol.png'
-import { sfx } from './sound.js'
-import { fmtB, BLOCK_SYM } from './economy.js'
+import bg from './assets/home-bg.png'
+import { sfx, setSfx, setMusic } from './sound.js'
+import { fmtB, fmt, BLOCK_SYM, CASH_SYM, cashPerHour, managerBonus } from './economy.js'
 import { shortAddr } from './wallet.js'
+import { levelFromXp, rankForLevel } from './state.js'
 
 const EMOJI_PFPS = ['🤑', '😎', '🦈', '👑', '🐺', '🚀', '💼', '🏗️', '🧱', '🐉', '🦁', '💎']
 
-// $ESTATE earned so far lives in the game save
-function readEstateBalance() {
-  try { return JSON.parse(localStorage.getItem('blocklord-save-v1'))?.block ?? 0 } catch { return 0 }
+const SAVE_KEY = 'blocklord-save-v1'
+function readSave() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {} } catch { return {} }
+}
+function writeSaveSettings(settings) {
+  const s = readSave()
+  s.settings = settings
+  localStorage.setItem(SAVE_KEY, JSON.stringify(s))
 }
 
-// Deterministic skyline: [x, width, height] per building; windows generated
-const BACK_BUILDINGS = [
-  [0, 90, 150], [100, 70, 210], [180, 110, 130], [300, 80, 240], [390, 100, 170],
-  [500, 70, 260], [580, 120, 150], [710, 90, 220], [810, 100, 160], [920, 80, 200],
-  [1010, 110, 140], [1130, 80, 230], [1220, 100, 180], [1330, 90, 250], [1430, 90, 160],
+// Preview standings until multiplayer goes live
+const LEADER_BOTS = [
+  { name: 'BrickzillaNYC', pfp: '🦖', rev: 48200 },
+  { name: 'DubaiWhale', pfp: '🐋', rev: 31500 },
+  { name: 'LandLadyLiz', pfp: '💅', rev: 19800 },
+  { name: 'TokyoTycoon', pfp: '🗼', rev: 12400 },
+  { name: 'SirBricksalot', pfp: '🎩', rev: 8600 },
+  { name: 'CryptoKeith', pfp: '🤓', rev: 4100 },
+  { name: 'PixelLandlord', pfp: '👾', rev: 2300 },
+  { name: 'MortgageMolly', pfp: '🏡', rev: 950 },
+  { name: 'CouchInvestor', pfp: '🛋️', rev: 210 },
 ]
-const FRONT_BUILDINGS = [
-  [30, 120, 110], [180, 90, 170], [290, 130, 90], [450, 100, 150], [580, 140, 100],
-  [750, 110, 180], [890, 130, 120], [1050, 100, 160], [1180, 140, 95], [1350, 110, 140],
-]
-
-function Skyline({ className, buildings, lit }) {
-  const content = useMemo(() => buildings.map(([x, w, h], bi) => {
-    const rects = [<rect key="b" x={x} y={300 - h} width={w} height={h} rx="4" />]
-    if (lit) {
-      const cols = Math.floor(w / 22)
-      const rows = Math.floor(h / 30)
-      for (let c = 0; c < cols; c++) {
-        for (let r = 0; r < rows; r++) {
-          // deterministic scatter — about half the windows are lit
-          if ((bi * 7 + c * 3 + r * 5) % 5 < 2) {
-            rects.push(
-              <rect
-                key={`w${c}-${r}`}
-                className="win"
-                x={x + 9 + c * 22} y={300 - h + 12 + r * 30}
-                width="8" height="11" rx="1.5"
-                style={{ animationDelay: `${((bi * 13 + c * 7 + r * 11) % 40) / 10}s` }}
-              />
-            )
-          }
-        }
-      }
-    }
-    return rects
-  }), [buildings, lit])
-  return (
-    <svg className={className} viewBox="0 0 1520 300" preserveAspectRatio="xMidYMax slice" aria-hidden>
-      {content}
-    </svg>
-  )
-}
 
 export default function Home({ player, onPlay, onCreateProfile, onConnectWallet, connecting, error }) {
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [tokenOpen, setTokenOpen] = useState(false)
-  const [walletOpen, setWalletOpen] = useState(false)
+  const [modal, setModal] = useState(null) // 'profile' | 'token' | 'wallet' | 'settings' | 'account' | 'leaders'
   const [name, setName] = useState('')
   const [pfp, setPfp] = useState({ type: 'emoji', value: '🤑' })
   const fileRef = useRef(null)
   const nameOk = /^[a-zA-Z0-9_ ]{3,16}$/.test(name.trim())
-  const estate = readEstateBalance()
+
+  const save = readSave()
+  const estate = save.block ?? 0
+  const [settings, setSettings] = useState(save.settings ?? { music: true, sfx: true })
   const connected = !!player?.address
+  const level = levelFromXp(save.xp ?? 0)
+
+  const myRevenue = useMemo(() => {
+    const owned = Object.values(save.owned || {})
+    return owned.reduce((s, p) => s + cashPerHour(p.price, p.ups) * managerBonus(p), 0)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const leaders = useMemo(() => {
+    const rows = [...LEADER_BOTS.map(b => ({ ...b, me: false }))]
+    rows.push({ name: player?.name || 'You', pfp: player?.pfp?.value || '🙂', rev: myRevenue, me: true, img: player?.pfp?.type === 'image' ? player.pfp.value : null })
+    return rows.sort((a, b) => b.rev - a.rev)
+  }, [player, myRevenue])
+
+  function toggleSetting(k) {
+    sfx.click()
+    const next = { ...settings, [k]: !settings[k] }
+    setSettings(next)
+    writeSaveSettings(next)
+    if (k === 'sfx') setSfx(next.sfx)
+    if (k === 'music') setMusic(next.music)
+  }
 
   function onFile(e) {
     const file = e.target.files?.[0]
@@ -87,34 +86,41 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
   function handlePlay() {
     sfx.click()
     if (player?.name) onPlay()
-    else setProfileOpen(true)
+    else setModal('profile')
   }
 
+  const open = (m) => { sfx.open(); setModal(m) }
+  const close = () => { sfx.close(); setModal(null) }
+
   return (
-    <div className="home">
-      <Skyline className="city city-back" buildings={BACK_BUILDINGS} lit={false} />
-      <Skyline className="city city-front" buildings={FRONT_BUILDINGS} lit={true} />
-      <div className="home-grass" />
+    <div className="home" style={{ backgroundImage: `url(${bg})` }}>
+      <div className="home-sky-tint" />
 
-      <div className="home-inner">
+      <div className="home-inner menu">
         <img className="home-mark" src={logo} alt="Sol Estates" />
-        <p className="home-tag">
-          The real world is for sale. Buy real buildings, earn <b>CASH</b> — and{' '}
-          <b>$ESTATE</b>, the real token, straight to your wallet.
-        </p>
 
-        <button className="play-btn" onClick={handlePlay}>
-          ▶ &nbsp;PLAY
-        </button>
+        <button className="play-btn" onClick={handlePlay}>▶ &nbsp;PLAY</button>
 
-        <div className="home-row">
-          <button className="home-sq token-btn" onClick={() => { sfx.open(); setTokenOpen(true) }}>
-            <span className="home-sq-icon">{BLOCK_SYM}</span>
-            <span>$ESTATE</span>
+        <div className="menu-row">
+          <button className="menu-sq" onClick={() => open('token')}>
+            <span className="menu-ic sol-grad">{BLOCK_SYM}</span><span>$ESTATE</span>
           </button>
-          <button className="home-sq wallet-btn" onClick={() => { sfx.open(); setWalletOpen(true) }}>
-            <span className="home-sq-icon">👛</span>
-            <span>{connected ? shortAddr(player.address) : 'Wallet'}</span>
+          <button className="menu-sq" onClick={() => open('wallet')}>
+            <span className="menu-ic">👛</span><span>Wallet</span>
+          </button>
+          <button className="menu-sq" onClick={() => open('leaders')}>
+            <span className="menu-ic">🏆</span><span>Leaders</span>
+          </button>
+          <button className="menu-sq" onClick={() => open('account')}>
+            <span className="menu-ic">
+              {player?.pfp?.type === 'image'
+                ? <img className="menu-pfp" src={player.pfp.value} alt="" />
+                : (player?.pfp?.value || '👤')}
+            </span>
+            <span>Account</span>
+          </button>
+          <button className="menu-sq" onClick={() => open('settings')}>
+            <span className="menu-ic">⚙️</span><span>Settings</span>
           </button>
         </div>
 
@@ -122,12 +128,12 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
       </div>
 
       {/* -------- profile setup (first PLAY) -------- */}
-      {profileOpen && (
-        <div className="modal-backdrop" onClick={() => setProfileOpen(false)}>
+      {modal === 'profile' && (
+        <div className="modal-backdrop" onClick={close}>
           <div className="modal profile-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-head">
               <h3>Create your profile</h3>
-              <button className="close-flat" onClick={() => { sfx.close(); setProfileOpen(false) }}>✕</button>
+              <button className="close-flat" onClick={close}>✕</button>
             </div>
             <div className="profile-center">
               <div className="pfp-preview">
@@ -171,12 +177,12 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
       )}
 
       {/* -------- $ESTATE token -------- */}
-      {tokenOpen && (
-        <div className="modal-backdrop" onClick={() => setTokenOpen(false)}>
-          <div className="modal token-modal" onClick={e => e.stopPropagation()}>
+      {modal === 'token' && (
+        <div className="modal-backdrop" onClick={close}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>{BLOCK_SYM} $ESTATE</h3>
-              <button className="close-flat" onClick={() => { sfx.close(); setTokenOpen(false) }}>✕</button>
+              <h3><span className="sol-grad">{BLOCK_SYM}</span> $ESTATE</h3>
+              <button className="close-flat" onClick={close}>✕</button>
             </div>
             <p className="market-note">
               <b>$ESTATE</b> is the property-yield token of Sol Estates, on Solana.
@@ -195,12 +201,12 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
       )}
 
       {/* -------- wallet -------- */}
-      {walletOpen && (
-        <div className="modal-backdrop" onClick={() => setWalletOpen(false)}>
-          <div className="modal wallet-modal" onClick={e => e.stopPropagation()}>
+      {modal === 'wallet' && (
+        <div className="modal-backdrop" onClick={close}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-head">
               <h3>👛 Wallet</h3>
-              <button className="close-flat" onClick={() => { sfx.close(); setWalletOpen(false) }}>✕</button>
+              <button className="close-flat" onClick={close}>✕</button>
             </div>
             {connected ? (
               <>
@@ -224,6 +230,96 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
                 <button className="primary" onClick={() => { sfx.click(); onConnectWallet() }} disabled={connecting}>
                   {connecting ? 'Connecting…' : 'Connect Phantom'}
                 </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* -------- leaderboard -------- */}
+      {modal === 'leaders' && (
+        <div className="modal-backdrop" onClick={close}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>🏆 Leaderboard</h3>
+              <button className="close-flat" onClick={close}>✕</button>
+            </div>
+            <p className="market-note">Ranked by property revenue per hour. <span className="muted">Preview standings — goes fully live with multiplayer.</span></p>
+            <div className="leader-list">
+              {leaders.map((row, i) => (
+                <div key={row.name + i} className={'leader-row' + (row.me ? ' me' : '')}>
+                  <span className="leader-rank">{i + 1}</span>
+                  <span className="leader-pfp">
+                    {row.img ? <img src={row.img} alt="" /> : row.pfp}
+                  </span>
+                  <span className="leader-name">{row.name}{row.me ? ' (you)' : ''}</span>
+                  <span className="leader-rev">{CASH_SYM}{fmt(row.rev)}<small>/hr</small></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* -------- settings -------- */}
+      {modal === 'settings' && (
+        <div className="modal-backdrop" onClick={close}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>⚙️ Settings</h3>
+              <button className="close-flat" onClick={close}>✕</button>
+            </div>
+            <div className="setting-row">
+              <span>Music</span>
+              <button className={settings.music ? 'toggle on' : 'toggle'} onClick={() => toggleSetting('music')}>
+                <span className="knob" />
+              </button>
+            </div>
+            <div className="setting-row">
+              <span>Sound effects</span>
+              <button className={settings.sfx ? 'toggle on' : 'toggle'} onClick={() => toggleSetting('sfx')}>
+                <span className="knob" />
+              </button>
+            </div>
+            <p className="settings-foot">SOL ESTATES <span className="muted">· pre-alpha · $ESTATE on Solana</span></p>
+          </div>
+        </div>
+      )}
+
+      {/* -------- account -------- */}
+      {modal === 'account' && (
+        <div className="modal-backdrop" onClick={close}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>Account</h3>
+              <button className="close-flat" onClick={close}>✕</button>
+            </div>
+            {player?.name ? (
+              <>
+                <div className="empire-id">
+                  {player.pfp?.type === 'image'
+                    ? <img className="pfp big" src={player.pfp.value} alt="" />
+                    : <span className="pfp-emoji big">{player.pfp?.value || '🙂'}</span>}
+                  <div>
+                    <b>{player.name}</b>
+                    <span className="rank-name">Lv {level} · {rankForLevel(level)}</span>
+                  </div>
+                </div>
+                <div className="empire-stats">
+                  <div><label>Revenue</label><b>{CASH_SYM}{fmt(myRevenue)}/hr</b></div>
+                  <div><label>$ESTATE</label><b>{BLOCK_SYM}{fmtB(estate)}</b></div>
+                  <div><label>Wallet</label><b>{connected ? shortAddr(player.address) : 'Not linked'}</b></div>
+                </div>
+                {!connected && (
+                  <button className="primary" onClick={() => { sfx.click(); onConnectWallet() }} disabled={connecting}>
+                    {connecting ? 'Connecting…' : 'Connect Phantom'}
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="market-note">No profile yet — hit <b>PLAY</b> to create your landlord.</p>
+                <button className="primary" onClick={() => { sfx.click(); setModal('profile') }}>Create profile</button>
               </>
             )}
           </div>
