@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Home from './Home.jsx'
 import Game from './Game.jsx'
 import { connectPhantom, disconnectPhantom } from './wallet.js'
@@ -16,6 +16,22 @@ function loadPlayer() {
 
 export default function App() {
   const [player, setPlayer] = useState(loadPlayer)
+
+  // One delegated listener gives every enabled button a soft hover tick
+  const lastHoverEl = useRef(null)
+  useEffect(() => {
+    const onOver = (e) => {
+      const btn = e.target.closest?.('button:not(:disabled), .chip, .prop-row')
+      if (btn && btn !== lastHoverEl.current) {
+        lastHoverEl.current = btn
+        sfx.hover()
+      } else if (!btn) {
+        lastHoverEl.current = null
+      }
+    }
+    document.addEventListener('pointerover', onOver)
+    return () => document.removeEventListener('pointerover', onOver)
+  }, [])
   // 'login' → 'account' → 'locate' → 'play'. A reload mid-onboarding resumes
   // at account creation until a username exists — no skipping the flow.
   const [stage, setStage] = useState(() => {

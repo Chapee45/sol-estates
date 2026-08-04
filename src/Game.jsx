@@ -437,12 +437,17 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     }
     // Layer-scoped listeners are safe to attach before the layer exists
     map.on('click', 'poi-icons', (e) => { sfx.open(); setSelectedId(e.features[0].properties.id) })
+    let hoveredBadge = null
     map.on('mousemove', 'poi-icons', (e) => {
       map.getCanvas().style.cursor = 'pointer'
       const id = e.features?.[0]?.properties?.id
-      if (id) { try { map.setFilter('poi-hover', ['==', ['get', 'id'], id]) } catch { /* not ready */ } }
+      if (id) {
+        if (id !== hoveredBadge) { hoveredBadge = id; sfx.hover() }
+        try { map.setFilter('poi-hover', ['==', ['get', 'id'], id]) } catch { /* not ready */ }
+      }
     })
     map.on('mouseleave', 'poi-icons', () => {
+      hoveredBadge = null
       map.getCanvas().style.cursor = ''
       try { map.setFilter('poi-hover', ['==', ['get', 'id'], '']) } catch { /* not ready */ }
     })
