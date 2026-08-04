@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import logo from './assets/logo-sol.png'
+import { sfx } from './sound.js'
 
 const EMOJI_PFPS = ['🤑', '😎', '🦈', '👑', '🐺', '🚀', '💼', '🏗️', '🧱', '🐉', '🦁', '💎']
 
@@ -51,11 +52,11 @@ export default function Home({
               <div><b>195</b><span>countries</span></div>
               <div><b>$BLOCK</b><span>on Solana</span></div>
             </div>
-            <button className="phantom-btn" onClick={onPhantom} disabled={connecting}>
+            <button className="phantom-btn" onClick={() => { sfx.click(); onPhantom() }} disabled={connecting}>
               {connecting ? 'Connecting…' : 'Connect Phantom'}
             </button>
             {showDev && (
-              <button className="guest-btn" onClick={onDev}>Developer session (local only)</button>
+              <button className="guest-btn" onClick={() => { sfx.click(); onDev() }}>Developer session (local only)</button>
             )}
             {error && <p className="home-err">{error}</p>}
           </>
@@ -74,10 +75,10 @@ export default function Home({
                 <button
                   key={e}
                   className={'pfp-opt' + (pfp.type === 'emoji' && pfp.value === e ? ' on' : '')}
-                  onClick={() => setPfp({ type: 'emoji', value: e })}
+                  onClick={() => { sfx.select(); setPfp({ type: 'emoji', value: e }) }}
                 >{e}</button>
               ))}
-              <button className="pfp-opt upload" onClick={() => fileRef.current?.click()}>＋</button>
+              <button className="pfp-opt upload" onClick={() => { sfx.click(); fileRef.current?.click() }}>＋</button>
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
             </div>
             <input
@@ -90,7 +91,7 @@ export default function Home({
             <button
               className="phantom-btn"
               disabled={!nameOk}
-              onClick={() => onCreateAccount({ name: name.trim(), pfp })}
+              onClick={() => { sfx.buy(); onCreateAccount({ name: name.trim(), pfp }) }}
             >
               {nameOk ? `Continue as ${name.trim()}` : 'Choose a username'}
             </button>
@@ -105,10 +106,10 @@ export default function Home({
               Start the game in <b>your own neighborhood</b> — the streets you walk,
               the cafés you know, all buyable. Your location stays on your device.
             </p>
-            <button className="phantom-btn" onClick={onUseLocation} disabled={locating}>
+            <button className="phantom-btn" onClick={() => { sfx.click(); onUseLocation() }} disabled={locating}>
               {locating ? 'Finding your neighborhood…' : 'Use my location'}
             </button>
-            <button className="guest-btn" onClick={onSkipLocation}>Skip — start in New York</button>
+            <button className="guest-btn" onClick={() => { sfx.click(); onSkipLocation() }}>Skip — start in New York</button>
           </>
         )}
       </div>

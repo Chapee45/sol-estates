@@ -7,7 +7,7 @@ export default function SettingsModal({ open, onClose, settings, onToggle, onLog
       <div className="modal settings" onClick={e => e.stopPropagation()}>
         <div className="modal-head">
           <h3>Settings</h3>
-          <button className="close-flat" onClick={onClose}>✕</button>
+          <button className="close-flat" onClick={() => { sfx.close(); onClose() }}>✕</button>
         </div>
         <div className="setting-row">
           <span>Music</span>
@@ -27,7 +27,7 @@ export default function SettingsModal({ open, onClose, settings, onToggle, onLog
         </div>
         <div className="setting-row danger">
           <span>Reset progress</span>
-          <button className="mini-btn danger-btn" onClick={onReset}>Reset</button>
+          <button className="mini-btn danger-btn" onClick={() => { sfx.click(); onReset() }}>Reset</button>
         </div>
         <p className="settings-foot">SOL ESTATES <span className="muted">· pre-alpha · $BLOCK on Solana</span></p>
       </div>

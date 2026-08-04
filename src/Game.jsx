@@ -240,6 +240,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     selPinRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' })
       .setLngLat([p.lon, p.lat])
       .addTo(map)
+    sfx.plop()
     return () => { if (selPinRef.current) { selPinRef.current.remove(); selPinRef.current = null } }
   }, [selectedId])
 
@@ -261,8 +262,10 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     if (!src) return
     const z = map.getZoom()
     // Monotonic LOD: each property has one fixed reveal level from the
-    // quadtree index — visible whenever zoom ≥ reveal - 1.5 and on screen.
+    // quadtree index. The offset is zoom-aware: at neighborhood zoom the FULL
+    // inventory shows; mid zooms cut deep; far-out views stay curated.
     // Zooming in only ever ADDS markers; zooming out only removes them.
+    const lodOffset = z >= 13.5 ? 4.5 : z >= 11.5 ? 2.5 : 1.75
     const b = map.getBounds()
     const west = b.getWest(), east = b.getEast()
     const south = b.getSouth(), north = b.getNorth()
@@ -272,7 +275,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     for (const p of selectSpawned(poisRef.current.values(), ownedRef.current)) {
       const isOwned = !!ownedRef.current[p.id]
       if (!isOwned) {
-        if (displayLevel(p) > z + 1.5) continue
+        if (displayLevel(p) > z + lodOffset) continue
         if (p.lon < west - padLon || p.lon > east + padLon ||
             p.lat < south - padLat || p.lat > north + padLat) continue
       }
@@ -858,7 +861,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
         <div className="portfolio">
           <div className="modal-head">
             <h3>Portfolio</h3>
-            <button className="close-flat" onClick={() => setShowPortfolio(false)}>✕</button>
+            <button className="close-flat" onClick={() => { sfx.close(); setShowPortfolio(false) }}>✕</button>
           </div>
           <div className="empire-id">
             {player.pfp?.type === 'image'
@@ -887,7 +890,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
           </button>
           {ownedList.length === 0 && <p className="muted">No holdings yet. Select a property on the map to acquire it.</p>}
           {ownedList.map(p => (
-            <button key={p.id} className="prop-row" onClick={() => flyTo(p)}>
+            <button key={p.id} className="prop-row" onClick={() => { sfx.select(); flyTo(p) }}>
               <span>{(TIER_META[p.tier] || TIER_META.shop).emoji} {p.name}{p.manager ? ' · managed' : ''}</span>
               <span className="muted">{p.ups}/{MAX_UPS} · {CASH_SYM}{fmt(cashPerHour(p.price, p.ups))} · {BLOCK_SYM}{fmtB(blockPerHour(p.price, p.ups))}</span>
             </button>

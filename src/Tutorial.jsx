@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import avatar from './assets/mogul-mike.png'
 import { fmt } from './economy.js'
+import { sfx } from './sound.js'
 
 // Placeholder character — name TBD per Luca
 export const MENTOR_NAME = 'Mogul Mike'
@@ -57,10 +58,10 @@ export default function Tutorial({ step, ctx, onNext, onSkip }) {
         {TUT_STEPS.map((_, i) => <span key={i} className={i === step ? 'on' : ''} />)}
       </div>
       <div className="tut-btns">
-        {!last && <button className="tut-skip" onClick={onSkip}>Skip</button>}
+        {!last && <button className="tut-skip" onClick={() => { sfx.close(); onSkip() }}>Skip</button>}
         {buying
           ? <span className="tut-wait">👆 buy it to continue</span>
-          : <button className="tut-next" onClick={onNext}>{last ? "Let's go 🚀" : 'Next'}</button>}
+          : <button className="tut-next" onClick={() => { sfx.click(); onNext() }}>{last ? "Let's go 🚀" : 'Next'}</button>}
       </div>
     </div>
   )

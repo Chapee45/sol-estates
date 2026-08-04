@@ -13,7 +13,7 @@ export default function Marketplace({
       <div className="modal market" onClick={e => e.stopPropagation()}>
         <div className="modal-head">
           <h3>Marketplace</h3>
-          <button className="close-flat" onClick={onClose}>✕</button>
+          <button className="close-flat" onClick={() => { sfx.close(); onClose() }}>✕</button>
         </div>
         {locked ? (
           <div className="market-locked">
@@ -41,7 +41,7 @@ export default function Marketplace({
                   const rar = RARITY_META[a.poi.rarity]
                   return (
                     <div key={a.key} className="auction-row">
-                      <button className="auction-info" onClick={() => onFly(a.poi)}>
+                      <button className="auction-info" onClick={() => { sfx.select(); onFly(a.poi) }}>
                         <span className="auction-emoji">{meta.emoji}</span>
                         <span className="auction-text">
                           <b>{a.poi.name}</b>
@@ -75,7 +75,7 @@ export default function Marketplace({
                   const offer = Math.max(1, Math.round(blockPriceFor(p.price) * 0.65))
                   return (
                     <div key={p.id} className="auction-row">
-                      <button className="auction-info" onClick={() => onFly(p)}>
+                      <button className="auction-info" onClick={() => { sfx.select(); onFly(p) }}>
                         <span className="auction-emoji">{meta.emoji}</span>
                         <span className="auction-text">
                           <b>{p.name}</b>

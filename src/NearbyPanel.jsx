@@ -17,7 +17,7 @@ export default function NearbyPanel({ open, items, sort, setSort, onSelect, onCl
     <div className="portfolio nearby-panel">
       <div className="modal-head">
         <h3>Nearby listings</h3>
-        <button className="close-flat" onClick={onClose}>✕</button>
+        <button className="close-flat" onClick={() => { sfx.close(); onClose() }}>✕</button>
       </div>
       <div className="sort-row">
         {SORTS.map(s => (
@@ -33,7 +33,7 @@ export default function NearbyPanel({ open, items, sort, setSort, onSelect, onCl
         const meta = TIER_META[p.tier] || TIER_META.shop
         const rar = RARITY_META[p.rarity || 'common']
         return (
-          <button key={p.id} className="prop-row" onClick={() => onSelect(p)}>
+          <button key={p.id} className="prop-row" onClick={() => { sfx.select(); onSelect(p) }}>
             <span className="nearby-main">
               <span className="nearby-emoji">{meta.emoji}</span>
               <span className="nearby-text">

@@ -1,5 +1,6 @@
 import { MANAGERS, managerCostFor, fmt, BLOCK_SYM } from './economy.js'
 import { CHAR_ART } from './characters.js'
+import { sfx } from './sound.js'
 
 // Choose a property manager — three characters, three tiers.
 export default function StaffModal({ propId, prop, block, onHire, onClose }) {
@@ -9,7 +10,7 @@ export default function StaffModal({ propId, prop, block, onHire, onClose }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-head">
           <h3>Appoint a manager</h3>
-          <button className="close-flat" onClick={onClose}>✕</button>
+          <button className="close-flat" onClick={() => { sfx.close(); onClose() }}>✕</button>
         </div>
         <p className="market-note">
           A manager runs <b>{prop.name}</b> around the clock — no 8-hour cap, rent
