@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
-import logo from './assets/logo-sol.png'
+import logo from './assets/logo-text.png'
+import cloud1 from './assets/cloud1.png'
+import cloud2 from './assets/cloud2.png'
 import bg from './assets/home-bg.png'
 import { sfx, setSfx, setMusic } from './sound.js'
 import { fmtB, fmt, BLOCK_SYM, CASH_SYM, cashPerHour, managerBonus } from './economy.js'
@@ -95,9 +97,12 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
   return (
     <div className="home" style={{ backgroundImage: `url(${bg})` }}>
       <div className="home-sky-tint" />
+      <img className="cloud cloud-a" src={cloud1} alt="" />
+      <img className="cloud cloud-b" src={cloud2} alt="" />
+      <img className="cloud cloud-c" src={cloud1} alt="" />
 
       <div className="home-inner menu">
-        <img className="home-mark" src={logo} alt="Sol Estates" />
+        <img className="home-wordmark" src={logo} alt="Sol Estates" />
 
         <button className="play-btn" onClick={handlePlay}>▶ &nbsp;PLAY</button>
 

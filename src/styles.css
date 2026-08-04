@@ -1076,22 +1076,20 @@ button.chip:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1p
   animation: fade-in 0.2s ease-out;
 }
 /* drifting cartoon clouds */
-.home::before, .home::after, .splash::before {
-  content: '';
+/* Real cartoon cloud sprites drift across the sky */
+.cloud {
   position: absolute;
-  width: 180px; height: 54px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 60px;
-  box-shadow: 40px 14px 0 18px rgba(255, 255, 255, 0.75), -50px 16px 0 10px rgba(255, 255, 255, 0.8);
-  animation: cloud-drift 42s linear infinite;
+  left: -420px;
   pointer-events: none;
+  animation: cloud-drift 52s linear infinite;
+  filter: drop-shadow(0 6px 14px rgba(43, 35, 80, 0.12));
 }
-.home::before { top: 9%; left: -240px; }
-.home::after { top: 26%; left: -240px; animation-delay: -21s; transform: scale(0.6); }
-.splash::before { top: 12%; left: -240px; }
+.cloud-a { top: 6%; width: 260px; opacity: 0.96; }
+.cloud-b { top: 22%; width: 150px; opacity: 0.85; animation-duration: 70s; animation-delay: -30s; }
+.cloud-c { top: 14%; width: 110px; opacity: 0.7; animation-duration: 90s; animation-delay: -62s; }
 @keyframes cloud-drift {
   from { transform: translateX(0); }
-  to { transform: translateX(calc(100vw + 480px)); }
+  to { transform: translateX(calc(100vw + 900px)); }
 }
 .home-glow { display: none; }
 .home-inner {
@@ -1101,14 +1099,16 @@ button.chip:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1p
   padding: 24px;
   display: flex; flex-direction: column; align-items: center; gap: 14px;
 }
-.home-mark, .splash-mark {
-  width: 200px; height: 200px;
-  border-radius: 28px;
-  border: 3px solid var(--ink);
-  box-shadow: 0 8px 0 var(--ink), var(--shadow-pop);
+.home-wordmark {
+  width: min(400px, 78vw);
+  filter: drop-shadow(0 10px 24px rgba(43, 35, 80, 0.35));
   animation: mark-bob 3.4s ease-in-out infinite;
 }
-.splash-mark { width: 150px; height: 150px; }
+.splash-wordmark {
+  width: min(300px, 70vw);
+  filter: drop-shadow(0 8px 20px rgba(43, 35, 80, 0.35));
+  animation: mark-bob 3.4s ease-in-out infinite;
+}
 @keyframes mark-bob {
   0%, 100% { transform: translateY(0) rotate(-0.5deg); }
   50% { transform: translateY(-7px) rotate(0.5deg); }
@@ -1352,7 +1352,7 @@ button.chip:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1p
   .card { bottom: 10px; }
   .tut-avatar { width: 60px; height: 60px; }
   .player-name { display: none; }
-  .home-mark { width: 170px; height: 170px; }
+  .home-wordmark { width: 300px; }
 }
 
 .maplibregl-ctrl-attrib { font-size: 10px; }

@@ -28,7 +28,7 @@ import {
   currentAuctions, rivalBid, finalRivalBid, rankForLevel,
 } from './state.js'
 import themeMusic from './assets/theme.mp3'
-import logoArt from './assets/logo-sol.png'
+import logoArt from './assets/logo-text.png'
 
 const SAVE_KEY = 'blocklord-save-v1'
 const MIN_POI_ZOOM = 11
@@ -989,8 +989,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
 
       {!mapReady && (
         <div className="splash">
-          <img className="splash-mark" src={logoArt} alt="" />
-          <h1 className="home-title">SOL ESTATES</h1>
+          <img className="splash-wordmark" src={logoArt} alt="" />
           <div className="spinner" />
           <p className="splash-text">Entering the real world…</p>
         </div>
