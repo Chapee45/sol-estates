@@ -6,13 +6,14 @@ import { sfx } from './sound.js'
 // Placeholder character — name TBD per Luca
 export const MENTOR_NAME = 'Mogul Mike'
 
-// mode 'dialog' = story step. mode 'buy' = waits for the guided first purchase.
-// target = CSS selector of the UI element to spotlight; the bubble docks next
-// to it. No target → full-screen blur with the big-avatar layout.
+// mode 'dialog' (no target) = big center-stage Mike with a soft dim behind.
+// mode 'dialog' + target   = coach-mark: spotlight + docked bubble, no dim wall.
+// mode 'buy'               = interactive, waits for the guided first purchase.
 export const TUT_STEPS = [
-  { mode: 'dialog', text: () => "Yo! Welcome to SOL ESTATES. See this map? That's YOUR neighborhood — real streets, real buildings, live from the real world. And it's all for sale." },
+  { mode: 'dialog', text: () => "Well, well — a new face! The name's Mogul Mike. Thirty years in property, three fortunes made, one questionable haircut. The registry sent me to show you the ropes." },
+  { mode: 'dialog', text: () => "Welcome to SOL ESTATES. See this map? That's YOUR neighborhood — real streets, real buildings, live from the real world. And every bit of it is for sale." },
   { mode: 'dialog', text: () => "Every badge is a real place. The ring is its rarity — gray Common, blue Rare, violet Epic… gold LEGENDARY. Rarer = pricier = pays way more." },
-  { mode: 'dialog', target: '[data-tut="money"]', text: () => "Your two currencies: $ CASH builds the empire, ◈ $BLOCK is the real crypto token — straight to your Phantom wallet. Every property earns BOTH." },
+  { mode: 'dialog', target: '[data-tut="money"]', text: () => "Your two currencies: $ CASH builds the empire, ◈ $ESTATE is the real crypto token — straight to your wallet. Every property earns BOTH." },
   { mode: 'dialog', text: () => "Enough talk. Rule #1 of real estate: your first deal should be CHEAP. Let me find you a bargain nobody owns yet… follow me!" },
   {
     mode: 'buy',
@@ -31,7 +32,7 @@ export default function Tutorial({ step, ctx, onNext, onSkip }) {
   const def = TUT_STEPS[step]
   const [rect, setRect] = useState(null)
 
-  // Track the highllighted element's position (it can move/animate)
+  // Track the highlighted element's position (it can move/animate)
   useEffect(() => {
     if (!def.target) { setRect(null); return }
     let alive = true
@@ -66,11 +67,11 @@ export default function Tutorial({ step, ctx, onNext, onSkip }) {
     </div>
   )
 
-  // Anchored coach-mark layout: spotlight + bubble docked to the target
+  // Coach-mark layout: spotlight + bubble docked to the highlighted element
   if (rect) {
     const vw = window.innerWidth
     const vh = window.innerHeight
-    const BW = Math.min(360, vw - 16)
+    const BW = Math.min(380, vw - 16)
     const below = rect.bottom < vh * 0.55
     const left = Math.max(8, Math.min(rect.left, vw - BW - 8))
     const bubbleStyle = below
@@ -82,7 +83,7 @@ export default function Tutorial({ step, ctx, onNext, onSkip }) {
           className="tut-spot"
           style={{ top: rect.top - 7, left: rect.left - 7, width: rect.width + 14, height: rect.height + 14 }}
         />
-        <div className={'tut-anchored' + (below ? ' from-top' : ' from-bottom')} style={bubbleStyle} key={step}>
+        <div className="tut-anchored" style={bubbleStyle} key={step}>
           <div className="tut-head">
             <img src={avatar} alt={MENTOR_NAME} />
             <span className="tut-name">{MENTOR_NAME} <span className="tut-name-note">· your mentor</span></span>
@@ -94,13 +95,13 @@ export default function Tutorial({ step, ctx, onNext, onSkip }) {
     )
   }
 
-  // Default layout: big avatar bottom-left (full-screen blur handled by Game)
+  // Center-stage layout: Mike front and center, big
   return (
-    <div className="tut">
-      <img className="tut-avatar" src={avatar} alt={MENTOR_NAME} />
-      <div className="tut-bubble">
-        <div className="tut-name">{MENTOR_NAME} <span className="tut-name-note">· your mentor</span></div>
-        <p className="tut-text">{def.text(ctx)}</p>
+    <div className="tut-center" key={step}>
+      <img className="tut-center-avatar" src={avatar} alt={MENTOR_NAME} />
+      <div className="tut-center-card">
+        <div className="tut-name big">{MENTOR_NAME} <span className="tut-name-note">· your mentor</span></div>
+        <p className="tut-center-text">{def.text(ctx)}</p>
         {controls}
       </div>
     </div>

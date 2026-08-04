@@ -992,8 +992,7 @@ button.chip:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1p
   position: absolute;
   inset: 0;
   z-index: 15;
-  background: rgba(24, 32, 70, 0.45);
-  backdrop-filter: blur(6px);
+  background: rgba(24, 32, 70, 0.42);
   animation: fade-in 0.35s ease-out;
 }
 .tut {
@@ -1092,7 +1091,7 @@ button.chip:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1p
   display: flex; flex-direction: column; align-items: center; gap: 14px;
 }
 .home-mark, .splash-mark {
-  width: 220px; height: 220px;
+  width: 200px; height: 200px;
   border-radius: 28px;
   border: 3px solid var(--ink);
   box-shadow: 0 8px 0 var(--ink), var(--shadow-pop);
@@ -1161,6 +1160,125 @@ button.chip:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1p
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+
+/* ================= Home scene: skyline, lights, grass ================= */
+.city {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  width: 100%;
+  pointer-events: none;
+}
+.city-back { height: 42vh; fill: rgba(43, 35, 80, 0.35); }
+.city-front { height: 34vh; fill: #2b2350; }
+.city-front .win {
+  fill: #ffd54a;
+  opacity: 0.15;
+  animation: win-twinkle 4s ease-in-out infinite;
+}
+@keyframes win-twinkle {
+  0%, 100% { opacity: 0.12; }
+  50% { opacity: 0.85; }
+}
+.home-grass {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 7vh;
+  background: linear-gradient(180deg, #4cb653, #35944d);
+  border-top: 4px solid #2b2350;
+  pointer-events: none;
+}
+
+.play-btn {
+  width: min(340px, 80vw);
+  padding: 18px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  border-radius: 20px;
+  border-width: 3px;
+  background: linear-gradient(180deg, var(--gold-1), var(--gold-2));
+  color: var(--ink);
+  box-shadow: 0 6px 0 var(--ink), var(--shadow-pop);
+  animation: play-pulse 2.6s ease-in-out infinite;
+}
+.play-btn:not(:disabled):active { transform: translateY(4px); box-shadow: 0 2px 0 var(--ink); }
+@keyframes play-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.025); }
+}
+.home-row { display: flex; gap: 12px; }
+.home-sq {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 118px;
+  padding: 11px 16px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 800;
+  background: #fff;
+}
+.home-sq-icon { font-size: 22px; line-height: 1.1; }
+.token-btn .home-sq-icon {
+  background: linear-gradient(135deg, var(--sol-green), var(--sol-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 800;
+}
+.profile-center { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.profile-center .guest-btn { width: 100%; }
+
+/* ================= Center-stage tutorial ================= */
+.tut-center {
+  position: absolute;
+  inset: 0;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 20px;
+  pointer-events: none;
+}
+.tut-center-avatar {
+  width: min(190px, 34vw);
+  height: min(190px, 34vw);
+  border-radius: 50%;
+  border: 4px solid var(--gold-2);
+  box-shadow: 0 6px 0 var(--ink), var(--shadow-pop);
+  object-fit: cover;
+  background: #fff;
+  z-index: 1;
+  animation: mike-in 0.5s var(--bounce);
+}
+@keyframes mike-in {
+  0% { transform: translateY(26px) scale(0.7); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.tut-center-card {
+  width: min(520px, calc(100vw - 32px));
+  margin-top: -26px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  padding: 38px 26px 18px;
+  box-shadow: 0 6px 0 var(--ink), var(--shadow-pop);
+  text-align: center;
+  pointer-events: auto;
+  animation: modal-pop 0.4s var(--bounce);
+}
+.tut-name.big { font-size: 13px; }
+.tut-center-text {
+  font-size: 16.5px;
+  font-weight: 700;
+  line-height: 1.55;
+  margin: 8px 0 14px;
+}
+.tut-center-card .tut-controls { justify-content: space-between; }
 
 /* ================= Mobile ================= */
 @media (max-width: 560px) {

@@ -75,7 +75,7 @@ export default function Contract({ contract, playerName, signature, onComplete, 
   const rar = RARITY_META[poi.rarity || 'common']
   const priceStr = currency === 'cash'
     ? `${CASH_SYM}${fmt(poi.price)}`
-    : `${BLOCK_SYM}${fmt(blockPriceFor(poi.price))} $BLOCK`
+    : `${BLOCK_SYM}${fmt(blockPriceFor(poi.price))} $ESTATE`
   const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   const signed = !!drawn || affixed
   const sigImage = drawn || (affixed ? signature : null)

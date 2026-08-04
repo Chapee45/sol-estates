@@ -6,16 +6,15 @@ import { sfx, kickMusic } from './sound.js'
 
 const PLAYER_KEY = 'blocklord-player-v1'
 
-// Phantom is the only real door. The ?dev=1 bypass exists solely so the game
-// can be tested in environments without the extension — REMOVE BEFORE LAUNCH.
-const DEV_MODE = new URLSearchParams(window.location.search).has('dev')
-
 function loadPlayer() {
   try { return JSON.parse(localStorage.getItem(PLAYER_KEY)) } catch { return null }
 }
 
 export default function App() {
   const [player, setPlayer] = useState(loadPlayer)
+  const [stage, setStage] = useState('home') // 'home' | 'play'
+  const [connecting, setConnecting] = useState(false)
+  const [error, setError] = useState(null)
 
   // One delegated listener gives every enabled button a soft hover tick
   const lastHoverEl = useRef(null)
@@ -32,77 +31,57 @@ export default function App() {
     document.addEventListener('pointerover', onOver)
     return () => document.removeEventListener('pointerover', onOver)
   }, [])
-  // 'login' → 'account' → 'locate' → 'play'. A reload mid-onboarding resumes
-  // at account creation until a username exists — no skipping the flow.
-  const [stage, setStage] = useState(() => {
-    const p = loadPlayer()
-    if (!p) return 'login'
-    if (!p.name) return 'account'
-    return 'play'
-  })
-  const [connecting, setConnecting] = useState(false)
-  const [locating, setLocating] = useState(false)
-  const [error, setError] = useState(null)
 
   function savePlayer(p) {
     localStorage.setItem(PLAYER_KEY, JSON.stringify(p))
     setPlayer(p)
   }
 
-  async function onPhantom() {
+  // Returning player pressed PLAY
+  function onPlay() {
     kickMusic()
+    setStage('play')
+  }
+
+  // First-time player finished the profile card; optionally locate them
+  function onCreateProfile(profile, useLocation) {
+    kickMusic()
+    const base = { ...(player || {}), ...profile, mode: player?.address ? 'phantom' : 'guest', tutorialDone: false }
+    const go = (home) => {
+      savePlayer(home ? { ...base, home } : base)
+      setStage('play')
+    }
+    if (!useLocation) return go(null)
+    if (!navigator.geolocation) return ipFallback(go)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => go({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      () => ipFallback(go),
+      { timeout: 12000, maximumAge: 300000 }
+    )
+  }
+
+  async function ipFallback(go) {
+    try {
+      const r = await fetch('https://ipapi.co/json/')
+      const j = await r.json()
+      if (j.latitude && j.longitude) return go({ lat: j.latitude, lon: j.longitude })
+    } catch { /* default city */ }
+    go(null)
+  }
+
+  // Wallet connect is optional and lives on the home screen
+  async function onConnectWallet() {
     setConnecting(true)
     setError(null)
     try {
       const address = await connectPhantom()
       sfx.buy()
-      savePlayer({ mode: 'phantom', address, tutorialDone: false })
-      setStage('account')
+      savePlayer({ ...(player || { tutorialDone: false }), address, mode: 'phantom' })
     } catch (e) {
       setError(e.message)
     }
     setConnecting(false)
   }
-
-  function onDev() {
-    kickMusic()
-    savePlayer({ mode: 'dev', address: null, tutorialDone: false })
-    setStage('account')
-  }
-
-  function onCreateAccount({ name, pfp }) {
-    sfx.click()
-    savePlayer({ ...loadPlayer(), name, pfp })
-    setStage('locate')
-  }
-
-  // Native browser permission popup → start the game where the player lives.
-  // GPS/browser geolocation first; IP-based city lookup as fallback so the
-  // button works even when precise location is blocked or unavailable.
-  function onUseLocation() {
-    setLocating(true)
-    const finish = (home) => {
-      if (home) savePlayer({ ...loadPlayer(), home })
-      setLocating(false)
-      setStage('play')
-    }
-    const ipFallback = async () => {
-      try {
-        const r = await fetch('https://ipapi.co/json/')
-        const j = await r.json()
-        if (j.latitude && j.longitude) return finish({ lat: +j.latitude, lon: +j.longitude })
-      } catch { /* no luck */ }
-      finish(null) // default city
-    }
-    if (!navigator.geolocation) return ipFallback()
-    navigator.geolocation.getCurrentPosition(
-      (pos) => finish({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      () => ipFallback(),
-      { timeout: 12000, maximumAge: 300000 }
-    )
-  }
-
-  function onSkipLocation() { setStage('play') }
 
   function onTutorialDone() {
     savePlayer({ ...player, tutorialDone: true })
@@ -112,22 +91,18 @@ export default function App() {
     disconnectPhantom()
     localStorage.removeItem(PLAYER_KEY)
     setPlayer(null)
-    setStage('login')
+    setStage('home')
   }
 
-  if (player && stage === 'play') {
+  if (stage === 'play' && player?.name) {
     return <Game player={player} onLogout={onLogout} onTutorialDone={onTutorialDone} />
   }
   return (
     <Home
-      stage={player && (stage === 'locate' || stage === 'account') ? stage : 'login'}
-      onPhantom={onPhantom}
-      onDev={onDev}
-      showDev={DEV_MODE}
-      onCreateAccount={onCreateAccount}
-      onUseLocation={onUseLocation}
-      onSkipLocation={onSkipLocation}
-      locating={locating}
+      player={player}
+      onPlay={onPlay}
+      onCreateProfile={onCreateProfile}
+      onConnectWallet={onConnectWallet}
       connecting={connecting}
       error={error}
     />

@@ -29,7 +29,7 @@ export default function Marketplace({
 
             {tab === 'auctions' && (
               <div className="market-list">
-                <p className="market-note">Notable properties from your travels go under the hammer every hour. Outbid rivals with ◈ $BLOCK. <span className="muted">(Rival bids are simulated until multiplayer goes live.)</span></p>
+                <p className="market-note">Notable properties from your travels go under the hammer every hour. Outbid rivals with ◈ $ESTATE. <span className="muted">(Rival bids are simulated until multiplayer goes live.)</span></p>
                 {auctions.length === 0 && <p className="muted">Explore the map to discover properties — auctions pull from places you've seen.</p>}
                 {auctions.map(a => {
                   const mine = myBids[a.key]

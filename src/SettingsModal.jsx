@@ -29,7 +29,7 @@ export default function SettingsModal({ open, onClose, settings, onToggle, onLog
           <span>Reset progress</span>
           <button className="mini-btn danger-btn" onClick={() => { sfx.click(); onReset() }}>Reset</button>
         </div>
-        <p className="settings-foot">SOL ESTATES <span className="muted">· pre-alpha · $BLOCK on Solana</span></p>
+        <p className="settings-foot">SOL ESTATES <span className="muted">· pre-alpha · $ESTATE on Solana</span></p>
       </div>
     </div>
   )
