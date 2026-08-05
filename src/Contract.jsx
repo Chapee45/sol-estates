@@ -9,6 +9,7 @@ function SignaturePad({ onStroke }) {
   const canvasRef = useRef(null)
   const drawing = useRef(false)
   const empty = useRef(true)
+  const last = useRef(null) // {x, y, w} previous point + stroke width
 
   useEffect(() => {
     const c = canvasRef.current
@@ -18,7 +19,6 @@ function SignaturePad({ onStroke }) {
     const ctx = c.getContext('2d')
     ctx.scale(dpr, dpr)
     ctx.strokeStyle = '#1d2f6b'
-    ctx.lineWidth = 1.8
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
   }, [])
@@ -32,22 +32,35 @@ function SignaturePad({ onStroke }) {
     e.preventDefault()
     canvasRef.current.setPointerCapture?.(e.pointerId)
     drawing.current = true
-    const ctx = canvasRef.current.getContext('2d')
     const [x, y] = pos(e)
-    ctx.beginPath()
-    ctx.moveTo(x, y)
+    last.current = { x, y, w: 2.2 }
+    sfx.scribble()
   }
+  // Ink feel: fast strokes thin out, slow strokes press heavier — drawn as
+  // midpoint-smoothed quadratic segments so the line has no polygon corners.
   function move(e) {
-    if (!drawing.current) return
+    if (!drawing.current || !last.current) return
     const ctx = canvasRef.current.getContext('2d')
     const [x, y] = pos(e)
+    const p = last.current
+    const dist = Math.hypot(x - p.x, y - p.y)
+    if (dist < 1.5) return
+    const targetW = Math.max(1.1, 3.1 - dist * 0.12)
+    const w = p.w + (targetW - p.w) * 0.35
+    ctx.lineWidth = w
+    ctx.beginPath()
+    ctx.moveTo(p.x, p.y)
+    ctx.quadraticCurveTo(p.x, p.y, (p.x + x) / 2, (p.y + y) / 2)
     ctx.lineTo(x, y)
     ctx.stroke()
-    if (empty.current) { empty.current = false }
+    last.current = { x, y, w }
+    empty.current = false
+    sfx.scribble()
   }
   function up() {
     if (!drawing.current) return
     drawing.current = false
+    last.current = null
     if (!empty.current) onStroke(canvasRef.current.toDataURL('image/png'))
   }
 
@@ -101,23 +114,21 @@ export default function Contract({ contract, playerName, signature, onComplete, 
 
           <div className="sig-block">
             <div className="sig-label">Signature of the buyer</div>
-            {signature && !drawn ? (
-              affixed ? (
-                <div className="sig-stamped"><img src={signature} alt="signature" /></div>
-              ) : (
-                <button
-                  className="sig-pad"
-                  style={{ width: '100%', font: 'inherit' }}
-                  onClick={() => { sfx.sign(); setAffixed(true) }}
-                >
-                  <span className="sig-hint">Tap to affix your signature</span>
-                </button>
-              )
+            {affixed ? (
+              <div className="sig-stamped"><img src={signature} alt="signature" /></div>
             ) : (
               <div className="sig-pad" key={padKey}>
                 <SignaturePad onStroke={setDrawn} />
                 {!drawn && <span className="sig-hint">Sign here with your mouse or finger</span>}
               </div>
+            )}
+            {signature && !drawn && (
+              <button
+                className="sig-saved-btn"
+                onClick={() => { sfx.sign(); setAffixed(a => !a); if (!affixed) setDrawn(null) }}
+              >
+                {affixed ? '✏️ Sign by hand instead' : '✒️ Use my saved signature'}
+              </button>
             )}
             <div className="sig-line">
               <span className="sig-name">{playerName || 'The Bearer'}</span>
@@ -127,8 +138,8 @@ export default function Contract({ contract, playerName, signature, onComplete, 
 
           <div className="contract-actions">
             <button className="cancel" onClick={onCancel}>Decline</button>
-            {!signature && drawn && (
-              <button className="clear-sig" onClick={() => { setDrawn(null); setPadKey(k => k + 1) }}>Clear</button>
+            {drawn && !affixed && (
+              <button className="clear-sig" onClick={() => { sfx.click(); setDrawn(null); setPadKey(k => k + 1) }}>Clear</button>
             )}
             <button
               className="sign-btn"

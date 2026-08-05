@@ -3,7 +3,9 @@ import logo from './assets/logo-text.png'
 import cloud1 from './assets/cloud1.png'
 import cloud2 from './assets/cloud2.png'
 import bg from './assets/home-bg.png'
-import { sfx, setSfx, setMusic } from './sound.js'
+import bgNight from './assets/home-bg-night.png'
+import { sfx, applyAudioSettings } from './sound.js'
+import { GameSettings } from './SettingsModal.jsx'
 import { fmtB, fmt, BLOCK_SYM, CASH_SYM, cashPerHour, managerBonus } from './economy.js'
 import { shortAddr } from './wallet.js'
 import { levelFromXp, rankForLevel } from './state.js'
@@ -73,7 +75,15 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
 
   const save = readSave()
   const estate = save.block ?? 0
-  const [settings, setSettings] = useState(save.settings ?? { music: true, sfx: true })
+  const [settings, setSettings] = useState({
+    music: true, sfx: true, ambience: true, musicVol: 0.5, sfxVol: 0.6, ambVol: 0.5, night: false,
+    ...(save.settings || {}),
+  })
+  useEffect(() => {
+    applyAudioSettings(settings)
+    document.documentElement.dataset.theme = settings.night ? 'night' : ''
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings])
   const connected = !!player?.address
   const level = levelFromXp(save.xp ?? 0)
 
@@ -93,8 +103,11 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
     const next = { ...settings, [k]: !settings[k] }
     setSettings(next)
     writeSaveSettings(next)
-    if (k === 'sfx') setSfx(next.sfx)
-    if (k === 'music') setMusic(next.music)
+  }
+  function setSetting(k, v) {
+    const next = { ...settings, [k]: v }
+    setSettings(next)
+    writeSaveSettings(next)
   }
 
   // Store the chosen character as a small dataURL so the saved profile
@@ -174,7 +187,7 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
   const close = () => { sfx.close(); setModal(null); setPendingPlay(false) }
 
   return (
-    <div className="home" style={{ backgroundImage: `url(${bg})` }}>
+    <div className="home" style={{ backgroundImage: `url(${settings.night ? bgNight : bg})` }}>
       <div className="home-sky-tint" />
       <img className="cloud cloud-a" src={cloud1} alt="" />
       <img className="cloud cloud-b" src={cloud2} alt="" />
@@ -382,18 +395,7 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
               <h3>⚙️ Settings</h3>
               <button className="close-flat" onClick={close}>✕</button>
             </div>
-            <div className="setting-row">
-              <span>Music</span>
-              <button className={settings.music ? 'toggle on' : 'toggle'} onClick={() => toggleSetting('music')}>
-                <span className="knob" />
-              </button>
-            </div>
-            <div className="setting-row">
-              <span>Sound effects</span>
-              <button className={settings.sfx ? 'toggle on' : 'toggle'} onClick={() => toggleSetting('sfx')}>
-                <span className="knob" />
-              </button>
-            </div>
+            <GameSettings settings={settings} onToggle={toggleSetting} onSet={setSetting} />
             <p className="settings-foot">SOL ESTATES <span className="muted">· pre-alpha · $ESTATE on Solana</span></p>
           </div>
         </div>

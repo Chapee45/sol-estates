@@ -14,7 +14,7 @@ import Contract from './Contract.jsx'
 import StaffModal from './StaffModal.jsx'
 import NearbyPanel, { sortNearby } from './NearbyPanel.jsx'
 import { CHAR_ART, CHAR_NAMES, CHAR_LINES } from './characters.js'
-import { sfx, setSfx, setMusic, initMusic, kickMusic } from './sound.js'
+import { sfx, applyAudioSettings, initMusic, initAmbience, kickMusic } from './sound.js'
 import {
   TIER_META, UPGRADES, UPGRADE_RENT_MULT, MAX_UPS, RARITY_META, rarityOf,
   START_CASH, START_BLOCK,
@@ -28,6 +28,7 @@ import {
   currentAuctions, rivalBid, finalRivalBid, rankForLevel,
 } from './state.js'
 import themeMusic from './assets/theme.mp3'
+import ambienceSfx from './assets/ambience.mp3'
 import logoArt from './assets/logo-text.png'
 
 const SAVE_KEY = 'blocklord-save-v1'
@@ -44,7 +45,7 @@ function loadSave() {
     s.extraPermits = s.extraPermits ?? 0
     s.bids = s.bids ?? {}
     s.signature = s.signature ?? null
-    s.settings = s.settings ?? { music: true, sfx: true }
+    s.settings = { music: true, sfx: true, ambience: true, musicVol: 0.5, sfxVol: 0.6, ambVol: 0.5, night: false, ...(s.settings || {}) }
     for (const p of Object.values(s.owned || {})) {
       if (p.ups == null) p.ups = Math.max(0, (p.level || 1) - 1)
       p.rarity ??= rarityOf(p.id, p.tier)
@@ -53,7 +54,7 @@ function loadSave() {
     }
     return s
   } catch {
-    return { cash: START_CASH, block: START_BLOCK, xp: 0, extraPermits: 0, bids: {}, settings: { music: true, sfx: true } }
+    return { cash: START_CASH, block: START_BLOCK, xp: 0, extraPermits: 0, bids: {}, settings: { music: true, sfx: true, ambience: true, musicVol: 0.5, sfxVol: 0.6, ambVol: 0.5, night: false } }
   }
 }
 
@@ -72,6 +73,8 @@ export default function Game({ player, onLogout, onTutorialDone }) {
   const [extraPermits, setExtraPermits] = useState(save.extraPermits)
   const [bids, setBids] = useState(save.bids)
   const [settings, setSettings] = useState(save.settings)
+  const settingsRef = useRef(save.settings)
+  useEffect(() => { settingsRef.current = settings }, [settings])
   const [signature, setSignature] = useState(save.signature)
   const [contract, setContract] = useState(null)
   const [owned, setOwned] = useState(ownedRef.current)
@@ -131,17 +134,30 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     prevLevelRef.current = level
   }, [level])
 
-  // Audio prefs + music boot
+  // Audio prefs + music/ambience boot
   useEffect(() => {
-    setSfx(settings.sfx)
-    setMusic(settings.music)
+    applyAudioSettings(settings)
   }, [settings])
   useEffect(() => {
     initMusic(themeMusic)
+    initAmbience(ambienceSfx)
     const kick = () => kickMusic()
     document.addEventListener('pointerdown', kick)
     return () => document.removeEventListener('pointerdown', kick)
   }, [])
+
+  // Night mode: dark UI vars + dark basemap (setStyle wipes our layers, so
+  // re-arm the guarded setup poll to rebuild them on the new style)
+  const applyMapThemeRef = useRef(null)
+  const prevNightRef = useRef(settings.night)
+  useEffect(() => {
+    document.documentElement.dataset.theme = settings.night ? 'night' : ''
+    if (prevNightRef.current !== settings.night) {
+      prevNightRef.current = settings.night
+      applyMapThemeRef.current?.(settings.night)
+    }
+    return () => { document.documentElement.dataset.theme = '' }
+  }, [settings.night])
 
   useEffect(() => {
     for (const o of Object.values(ownedRef.current)) {
@@ -331,7 +347,9 @@ export default function Game({ player, onLogout, onTutorialDone }) {
   useEffect(() => {
     const map = new maplibregl.Map({
       container: mapDiv.current,
-      style: 'https://tiles.openfreemap.org/styles/liberty',
+      style: settingsRef.current?.night
+        ? 'https://tiles.openfreemap.org/styles/dark'
+        : 'https://tiles.openfreemap.org/styles/liberty',
       center: player.home ? [player.home.lon, player.home.lat] : [-73.9857, 40.758],
       zoom: player.home ? 15.5 : 16,
       minZoom: 1,
@@ -456,6 +474,18 @@ export default function Game({ player, onLogout, onTutorialDone }) {
       if (setupDone) { clearInterval(setupPoll); return }
       setup()
     }, 700)
+    // Swap basemap for night mode and rebuild the game layers on the new style
+    applyMapThemeRef.current = (night) => {
+      setupDone = false
+      map.setStyle(night
+        ? 'https://tiles.openfreemap.org/styles/dark'
+        : 'https://tiles.openfreemap.org/styles/liberty')
+      const poll = setInterval(() => {
+        if (setupDone) { clearInterval(poll); return }
+        setup()
+      }, 700)
+      setTimeout(() => clearInterval(poll), 20000)
+    }
     map.on('idle', loadVisible)
     map.on('moveend', loadVisible)
     // Live marker updates WHILE zooming/panning — no waiting for the gesture
@@ -956,6 +986,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
         onClose={() => setShowSettings(false)}
         settings={settings}
         onToggle={(k) => { sfx.click(); setSettings(s => ({ ...s, [k]: !s[k] })) }}
+        onSet={(k, v) => setSettings(s => ({ ...s, [k]: v }))}
         onLogout={onLogout}
         onReset={resetProgress}
         player={player}

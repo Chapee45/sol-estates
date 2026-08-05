@@ -6,25 +6,66 @@ let ctx = null
 const AC = () => (ctx ??= new (window.AudioContext || window.webkitAudioContext)())
 
 let sfxOn = true
+let sfxVol = 0.6 // 0..1 master, scales every synthesized burst
 export function setSfx(v) { sfxOn = v }
 export const getSfx = () => sfxOn
+export function setSfxVolume(v) { sfxVol = v }
 
 let musicOn = true
+let musicVol = 0.5 // 0..1 slider; 0.5 ≈ the original fixed level
 let audio = null
+const musicGain = () => 0.45 * musicVol
 export function setMusic(v) {
   musicOn = v
   if (audio) { v ? audio.play().catch(() => {}) : audio.pause() }
 }
 export const getMusic = () => musicOn
+export function setMusicVolume(v) {
+  musicVol = v
+  if (audio) audio.volume = musicGain()
+}
 export function initMusic(url) {
   if (audio) return
   audio = new Audio(url)
   audio.loop = true
-  audio.volume = 0.22
+  audio.volume = musicGain()
   if (musicOn) audio.play().catch(() => { /* waits for user gesture */ })
 }
+
+// City ambience bed (birds / traffic / distant cranes) — its own loop + mixer lane
+let ambOn = true
+let ambVol = 0.5
+let amb = null
+const ambGain = () => 0.55 * ambVol
+export function setAmbience(v) {
+  ambOn = v
+  if (amb) { v ? amb.play().catch(() => {}) : amb.pause() }
+}
+export function setAmbienceVolume(v) {
+  ambVol = v
+  if (amb) amb.volume = ambGain()
+}
+export function initAmbience(url) {
+  if (amb) return
+  amb = new Audio(url)
+  amb.loop = true
+  amb.volume = ambGain()
+  if (ambOn) amb.play().catch(() => { /* waits for user gesture */ })
+}
+
 export function kickMusic() {
   if (audio && musicOn && audio.paused) audio.play().catch(() => {})
+  if (amb && ambOn && amb.paused) amb.play().catch(() => {})
+}
+
+// Push saved settings into the mixer in one call
+export function applyAudioSettings(s = {}) {
+  setSfx(s.sfx ?? true)
+  setSfxVolume(s.sfxVol ?? 0.6)
+  setMusicVolume(s.musicVol ?? 0.5)
+  setMusic(s.music ?? true)
+  setAmbienceVolume(s.ambVol ?? 0.5)
+  setAmbience(s.ambience ?? true)
 }
 
 // --- building blocks ---------------------------------------------------
@@ -51,7 +92,7 @@ function clickBurst(vol = 0.09, freq = 1100, dur = 0.03, delay = 0) {
     bp.frequency.value = freq
     bp.Q.value = 1.2
     const g = ac.createGain()
-    g.gain.setValueAtTime(vol, ac.currentTime + delay)
+    g.gain.setValueAtTime(vol * (sfxVol / 0.6), ac.currentTime + delay)
     g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + delay + dur)
     src.connect(bp); bp.connect(g); g.connect(ac.destination)
     src.start(ac.currentTime + delay)
@@ -70,7 +111,7 @@ function thud(freq, dur = 0.09, vol = 0.07, delay = 0, drop = 0.75) {
     o.frequency.setValueAtTime(freq, ac.currentTime + delay)
     o.frequency.exponentialRampToValueAtTime(Math.max(40, freq * drop), ac.currentTime + delay + dur)
     g.gain.setValueAtTime(0.0001, ac.currentTime + delay)
-    g.gain.linearRampToValueAtTime(vol, ac.currentTime + delay + 0.008)
+    g.gain.linearRampToValueAtTime(vol * (sfxVol / 0.6), ac.currentTime + delay + 0.008)
     g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + delay + dur)
     o.connect(g); g.connect(ac.destination)
     o.start(ac.currentTime + delay)
@@ -88,7 +129,7 @@ function note(freq, dur = 0.14, vol = 0.06, delay = 0) {
     o.type = 'triangle'
     o.frequency.setValueAtTime(freq, ac.currentTime + delay)
     g.gain.setValueAtTime(0.0001, ac.currentTime + delay)
-    g.gain.linearRampToValueAtTime(vol, ac.currentTime + delay + 0.012)
+    g.gain.linearRampToValueAtTime(vol * (sfxVol / 0.6), ac.currentTime + delay + 0.012)
     g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + delay + dur)
     o.connect(g); g.connect(ac.destination)
     o.start(ac.currentTime + delay)
@@ -99,8 +140,16 @@ function note(freq, dur = 0.14, vol = 0.06, delay = 0) {
 // --- palette ------------------------------------------------------------
 
 let lastHover = 0
+let lastScribble = 0
 
 export const sfx = {
+  // pen-on-paper scratch while drawing a signature — throttled, freq-jittered
+  scribble: () => {
+    const t = performance.now()
+    if (t - lastScribble < 45) return
+    lastScribble = t
+    clickBurst(0.022 + Math.random() * 0.012, 1900 + Math.random() * 1400, 0.028 + Math.random() * 0.02)
+  },
   // barely-there tick for hover — heavily throttled
   hover: () => {
     const t = performance.now()

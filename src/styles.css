@@ -24,6 +24,36 @@
   --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* Night mode: cards go deep navy, text goes light, gold pops stay */
+:root[data-theme='night'] {
+  --sky-1: #1b2350;
+  --sky-2: #10142e;
+  --card: #232a52;
+  --card-2: #1b2145;
+  --text: #eceafe;
+  --ink: #12162e;
+  --muted: #9c97c4;
+  --shadow-pop: 0 14px 40px rgba(0, 0, 6, 0.55);
+}
+:root[data-theme='night'] .home-sky-tint { background: linear-gradient(180deg, rgba(10, 12, 34, 0.25), rgba(10, 12, 34, 0)); }
+:root[data-theme='night'] .cloud { opacity: 0.25 !important; filter: brightness(0.6); }
+:root[data-theme='night'] .hud-chip,
+:root[data-theme='night'] .loc-hits,
+:root[data-theme='night'] .loc-hit { background: var(--card); color: var(--text); }
+:root[data-theme='night'] .loc-hit:hover { background: #2d356b; }
+:root[data-theme='night'] .pfp-opt { background: var(--card-2); }
+:root[data-theme='night'] .name-input { background: var(--card-2); color: var(--text); }
+:root[data-theme='night'] .contract { filter: brightness(0.94); }
+
+/* volume slider rows */
+.setting-row.slider-row { padding-top: 0; margin-top: -6px; }
+.setting-row.slider-row input[type='range'] {
+  width: 100%;
+  accent-color: var(--gold-2);
+  height: 22px;
+  cursor: pointer;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { height: 100%; }
 body {
@@ -762,6 +792,20 @@ button.chip:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1p
 }
 
 /* ================= Account / PFP ================= */
+.sig-saved-btn {
+  margin-top: 7px;
+  width: 100%;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: #f6f3ff;
+  border: 2px dashed #b9aee0;
+  border-radius: 10px;
+  padding: 7px 10px;
+}
+.sig-saved-btn:hover { background: #efe9ff; }
+
 /* home menu balance HUD */
 .home-hud {
   position: absolute;
