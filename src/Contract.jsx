@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { TIER_META, RARITY_META, blockPriceFor, fmt, CASH_SYM, BLOCK_SYM } from './economy.js'
-import { sfx } from './sound.js'
+import { sfx, initScribble } from './sound.js'
+import pencilSfx from './assets/pencil.mp3'
+
+initScribble(pencilSfx)
 
 // The purchase agreement — a paper deed the player signs to close a deal.
 // First purchase: draw a real signature (saved). After that: tap to affix it.

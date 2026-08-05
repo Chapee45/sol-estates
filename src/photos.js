@@ -1,8 +1,8 @@
-// Every property gets a REAL photo, without fail. Cascade of sources:
+// Property photos: REAL street-level/web photos only — never satellite.
 //   0. Google Street View    — real storefront photo (needs GOOGLE_MAPS_KEY in config.js)
 //   1. Wikipedia lead image  — name-matched page near the coordinates
 //   2. Wikimedia Commons     — nearest geotagged photo within ~100m
-//   3. Esri aerial imagery   — satellite crop of the exact building (always exists)
+// No photo found → resolves null and the UI shows the tier's cartoon facade art.
 import { GOOGLE_MAPS_KEY } from './config.js'
 
 const cache = new Map()
@@ -56,17 +56,8 @@ async function commonsPhoto(poi) {
   return null
 }
 
-// Satellite crop of the property itself — deterministic, always available
-export function aerialPhoto(poi) {
-  const z = 18
-  const latRad = (poi.lat * Math.PI) / 180
-  const n = 2 ** z
-  const x = Math.floor(((poi.lon + 180) / 360) * n)
-  const y = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n)
-  return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`
-}
-
-// Never resolves null — worst case is the aerial shot of the building.
+// Resolves a real photo URL, or null when no genuine photo of the property
+// exists — callers show tier facade art in that case. Never satellite.
 export function fetchPhoto(poi) {
   if (cache.has(poi.id)) return cache.get(poi.id)
   const promise = (async () => {
@@ -81,8 +72,8 @@ export function fetchPhoto(poi) {
     try {
       const commons = await commonsPhoto(poi)
       if (commons) return commons
-    } catch { /* next source */ }
-    return aerialPhoto(poi)
+    } catch { /* no photo */ }
+    return null
   })()
   cache.set(poi.id, promise)
   return promise

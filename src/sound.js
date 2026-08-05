@@ -58,6 +58,16 @@ export function kickMusic() {
   if (amb && ambOn && amb.paused) amb.play().catch(() => {})
 }
 
+// Pencil-on-paper loop for the signature pad: runs while strokes are moving,
+// stops shortly after the pen lifts or pauses.
+let pen = null
+let penTimer = null
+export function initScribble(url) {
+  if (pen) return
+  pen = new Audio(url)
+  pen.loop = true
+}
+
 // Push saved settings into the mixer in one call
 export function applyAudioSettings(s = {}) {
   setSfx(s.sfx ?? true)
@@ -140,15 +150,19 @@ function note(freq, dur = 0.14, vol = 0.06, delay = 0) {
 // --- palette ------------------------------------------------------------
 
 let lastHover = 0
-let lastScribble = 0
 
 export const sfx = {
-  // pen-on-paper scratch while drawing a signature — throttled, freq-jittered
+  // real pencil scratch while drawing a signature — loop plays while the pen
+  // moves, auto-pauses ~140ms after strokes stop
   scribble: () => {
-    const t = performance.now()
-    if (t - lastScribble < 45) return
-    lastScribble = t
-    clickBurst(0.022 + Math.random() * 0.012, 1900 + Math.random() * 1400, 0.028 + Math.random() * 0.02)
+    if (!sfxOn || !pen) return
+    pen.volume = Math.min(1, 0.45 * (sfxVol / 0.6))
+    if (pen.paused) {
+      pen.currentTime = Math.random() * Math.max(0, (pen.duration || 2.6) - 0.6)
+      pen.play().catch(() => {})
+    }
+    clearTimeout(penTimer)
+    penTimer = setTimeout(() => pen.pause(), 140)
   },
   // barely-there tick for hover — heavily throttled
   hover: () => {
