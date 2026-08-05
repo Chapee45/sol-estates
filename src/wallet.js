@@ -11,12 +11,20 @@ export const isMobile = () => /android|iphone|ipad|ipod/i.test(navigator.userAge
 
 // Reopen the game inside Phantom's in-app browser, where the wallet is
 // injected. The ?phantom=connect flag lets App.jsx resume the connect there.
+// The phantom:// scheme launches the installed app directly — iOS won't
+// trigger the https universal link from a JS navigation, it just loads
+// phantom.com. The https link stays as a fallback for the not-installed case.
 export function openInPhantomApp() {
   const url = new URL(window.location.href)
   url.searchParams.set('phantom', 'connect')
-  window.location.href =
-    `https://phantom.app/ul/browse/${encodeURIComponent(url.toString())}` +
-    `?ref=${encodeURIComponent(window.location.origin)}`
+  const target = encodeURIComponent(url.toString())
+  const ref = encodeURIComponent(window.location.origin)
+  window.location.href = `phantom://browse/${target}?ref=${ref}`
+  setTimeout(() => {
+    if (!document.hidden) {
+      window.location.href = `https://phantom.app/ul/browse/${target}?ref=${ref}`
+    }
+  }, 2000)
 }
 
 // Phantom's in-app browser can inject the provider after our scripts run.
