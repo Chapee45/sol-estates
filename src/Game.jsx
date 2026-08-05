@@ -5,7 +5,6 @@ import { collectPOIs, selectSpawned, isSpawnedId } from './pois.js'
 import { sampleViewport } from './tileSampler.js'
 import { indexCandidate, displayLevel } from './lod.js'
 import { fetchPhoto } from './photos.js'
-import { tierArtFor } from './tierArt.js'
 import { shortAddr } from './wallet.js'
 import { registerMapIcons } from './mapIcons.js'
 import Tutorial, { TUT_STEPS } from './Tutorial.jsx'
@@ -267,7 +266,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     const poi = poisRef.current.get(selectedId)
     if (!poi) return
     let alive = true
-    fetchPhoto(poi).then(url => { if (alive) setPhoto(url || tierArtFor(poi.tier)) })
+    fetchPhoto(poi).then(url => { if (alive) setPhoto(url) })
     return () => { alive = false }
   }, [selectedId])
 

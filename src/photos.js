@@ -1,8 +1,9 @@
-// Property photos: REAL street-level/web photos only — never satellite.
-//   0. Google Street View    — real storefront photo (needs GOOGLE_MAPS_KEY in config.js)
-//   1. Wikipedia lead image  — name-matched page near the coordinates
-//   2. Wikimedia Commons     — nearest geotagged photo within ~100m
-// No photo found → resolves null and the UI shows the tier's cartoon facade art.
+// Property photos: REAL photos only — never satellite, never generated art.
+//   1. Wikipedia lead image  — actual photo of the place, name-matched nearby
+//   2. Wikimedia Commons     — nearest geotagged real photo within ~100m
+//   3. Google Street View    — the street the property is on
+//      (needs GOOGLE_MAPS_KEY in config.js — without it this rung is skipped)
+// Nothing found → resolves null; the card shows a neutral tier icon, no imagery.
 import { GOOGLE_MAPS_KEY } from './config.js'
 
 const cache = new Map()
@@ -56,15 +57,11 @@ async function commonsPhoto(poi) {
   return null
 }
 
-// Resolves a real photo URL, or null when no genuine photo of the property
-// exists — callers show tier facade art in that case. Never satellite.
+// Resolves a real photo URL, or null when nothing genuine exists.
+// Real photos of the place beat the street shot; satellite and AI art never appear.
 export function fetchPhoto(poi) {
   if (cache.has(poi.id)) return cache.get(poi.id)
   const promise = (async () => {
-    try {
-      const sv = await streetViewPhoto(poi)
-      if (sv) return sv
-    } catch { /* next source */ }
     try {
       const wiki = await wikiPhoto(poi)
       if (wiki) return wiki
@@ -72,6 +69,10 @@ export function fetchPhoto(poi) {
     try {
       const commons = await commonsPhoto(poi)
       if (commons) return commons
+    } catch { /* next source */ }
+    try {
+      const sv = await streetViewPhoto(poi)
+      if (sv) return sv
     } catch { /* no photo */ }
     return null
   })()
