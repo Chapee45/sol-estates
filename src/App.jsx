@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Home from './Home.jsx'
 import Game from './Game.jsx'
-import { connectPhantom, disconnectPhantom } from './wallet.js'
+import { connectPhantom, disconnectPhantom, waitForPhantom } from './wallet.js'
 import { sfx, kickMusic } from './sound.js'
 
 const PLAYER_KEY = 'blocklord-player-v1'
@@ -30,6 +30,20 @@ export default function App() {
     }
     document.addEventListener('pointerover', onOver)
     return () => document.removeEventListener('pointerover', onOver)
+  }, [])
+
+  // Back from the mobile deeplink: the game is now inside Phantom's in-app
+  // browser, so finish the connect the player started on the outside browser.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('phantom') !== 'connect') return
+    params.delete('phantom')
+    const qs = params.toString()
+    window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''))
+    waitForPhantom().then((p) => {
+      if (p && !loadPlayer()?.address) onConnectWallet()
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function savePlayer(p) {
