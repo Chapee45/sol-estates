@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import logo from './assets/logo-text.png'
 import cloud1 from './assets/cloud1.png'
 import cloud2 from './assets/cloud2.png'
@@ -8,7 +8,33 @@ import { fmtB, fmt, BLOCK_SYM, CASH_SYM, cashPerHour, managerBonus } from './eco
 import { shortAddr } from './wallet.js'
 import { levelFromXp, rankForLevel } from './state.js'
 
-const EMOJI_PFPS = ['🤑', '😎', '🦈', '👑', '🐺', '🚀', '💼', '🏗️', '🧱', '🐉', '🦁', '💎']
+import av01 from './assets/pfp/av01.jpg'
+import av02 from './assets/pfp/av02.jpg'
+import av03 from './assets/pfp/av03.jpg'
+import av04 from './assets/pfp/av04.jpg'
+import av05 from './assets/pfp/av05.jpg'
+import av06 from './assets/pfp/av06.jpg'
+import av07 from './assets/pfp/av07.jpg'
+import av08 from './assets/pfp/av08.jpg'
+import av09 from './assets/pfp/av09.jpg'
+import av10 from './assets/pfp/av10.jpg'
+import av11 from './assets/pfp/av11.jpg'
+import av12 from './assets/pfp/av12.jpg'
+
+const CHAR_PFPS = [
+  { id: 'bull', src: av01, label: 'Bully Banks' },
+  { id: 'bear', src: av02, label: 'Bear Marx' },
+  { id: 'doge', src: av03, label: 'Moon Doge' },
+  { id: 'ape', src: av04, label: 'Ape Foreman' },
+  { id: 'whale', src: av05, label: 'Sir Whalington' },
+  { id: 'robot', src: av06, label: 'Bot the Broker' },
+  { id: 'astro', src: av07, label: 'Moon Mover' },
+  { id: 'croc', src: av08, label: 'Croc Capital' },
+  { id: 'cat', src: av09, label: 'Laser Whiskers' },
+  { id: 'wizard', src: av10, label: 'The Oracle' },
+  { id: 'agent', src: av11, label: 'Keys Kiara' },
+  { id: 'magnate', src: av12, label: 'Old Money Monty' },
+]
 
 const SAVE_KEY = 'blocklord-save-v1'
 function readSave() {
@@ -22,21 +48,22 @@ function writeSaveSettings(settings) {
 
 // Preview standings until multiplayer goes live
 const LEADER_BOTS = [
-  { name: 'BrickzillaNYC', pfp: '🦖', rev: 48200 },
-  { name: 'DubaiWhale', pfp: '🐋', rev: 31500 },
-  { name: 'LandLadyLiz', pfp: '💅', rev: 19800 },
-  { name: 'TokyoTycoon', pfp: '🗼', rev: 12400 },
-  { name: 'SirBricksalot', pfp: '🎩', rev: 8600 },
-  { name: 'CryptoKeith', pfp: '🤓', rev: 4100 },
-  { name: 'PixelLandlord', pfp: '👾', rev: 2300 },
-  { name: 'MortgageMolly', pfp: '🏡', rev: 950 },
-  { name: 'CouchInvestor', pfp: '🛋️', rev: 210 },
+  { name: 'BrickzillaNYC', pfp: '🦖', img: av08, rev: 48200 },
+  { name: 'DubaiWhale', pfp: '🐋', img: av05, rev: 31500 },
+  { name: 'LandLadyLiz', pfp: '💅', img: av11, rev: 19800 },
+  { name: 'TokyoTycoon', pfp: '🗼', img: av09, rev: 12400 },
+  { name: 'SirBricksalot', pfp: '🎩', img: av12, rev: 8600 },
+  { name: 'CryptoKeith', pfp: '🤓', img: av06, rev: 4100 },
+  { name: 'PixelLandlord', pfp: '👾', img: av10, rev: 2300 },
+  { name: 'MortgageMolly', pfp: '🏡', img: av03, rev: 950 },
+  { name: 'CouchInvestor', pfp: '🛋️', img: av02, rev: 210 },
 ]
 
 export default function Home({ player, onPlay, onCreateProfile, onConnectWallet, connecting, error }) {
   const [modal, setModal] = useState(null) // 'profile' | 'token' | 'wallet' | 'settings' | 'account' | 'leaders'
   const [name, setName] = useState('')
-  const [pfp, setPfp] = useState({ type: 'emoji', value: '🤑' })
+  const [pfp, setPfp] = useState({ type: 'image', value: '' })
+  const [charSel, setCharSel] = useState(CHAR_PFPS[0].id)
   const fileRef = useRef(null)
   const nameOk = /^[a-zA-Z0-9_ ]{3,16}$/.test(name.trim())
 
@@ -66,6 +93,22 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
     if (k === 'music') setMusic(next.music)
   }
 
+  // Store the chosen character as a small dataURL so the saved profile
+  // survives redeploys (built asset filenames change between builds).
+  function pickChar(c, silent) {
+    if (!silent) sfx.select()
+    setCharSel(c.id)
+    const img = new Image()
+    img.onload = () => {
+      const cnv = document.createElement('canvas')
+      cnv.width = cnv.height = 128
+      cnv.getContext('2d').drawImage(img, 0, 0, 128, 128)
+      setPfp({ type: 'image', value: cnv.toDataURL('image/jpeg', 0.85) })
+    }
+    img.src = c.src
+  }
+  useEffect(() => { pickChar(CHAR_PFPS[0], true) }, [])
+
   function onFile(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -78,6 +121,7 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
         const cx = c.getContext('2d')
         const s = Math.min(img.width, img.height)
         cx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 128, 128)
+        setCharSel(null)
         setPfp({ type: 'image', value: c.toDataURL('image/jpeg', 0.82) })
       }
       img.src = reader.result
@@ -142,17 +186,18 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
             </div>
             <div className="profile-center">
               <div className="pfp-preview">
-                {pfp.type === 'image' ? <img src={pfp.value} alt="" /> : <span>{pfp.value}</span>}
+                <img src={pfp.value || CHAR_PFPS[0].src} alt="" />
               </div>
               <div className="pfp-grid">
-                {EMOJI_PFPS.map(e => (
+                {CHAR_PFPS.map(c => (
                   <button
-                    key={e}
-                    className={'pfp-opt' + (pfp.type === 'emoji' && pfp.value === e ? ' on' : '')}
-                    onClick={() => { sfx.select(); setPfp({ type: 'emoji', value: e }) }}
-                  >{e}</button>
+                    key={c.id}
+                    title={c.label}
+                    className={'pfp-opt char' + (charSel === c.id ? ' on' : '')}
+                    onClick={() => pickChar(c)}
+                  ><img src={c.src} alt={c.label} /></button>
                 ))}
-                <button className="pfp-opt upload" onClick={() => { sfx.click(); fileRef.current?.click() }}>＋</button>
+                <button className="pfp-opt upload" title="Upload your own" onClick={() => { sfx.click(); fileRef.current?.click() }}>＋</button>
                 <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
               </div>
               <input
