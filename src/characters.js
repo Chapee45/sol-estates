@@ -1,8 +1,8 @@
 // Character art registry — portraits generated with KIE nano banana.
-import mike from './assets/mogul-mike.png'
-import ray from './assets/mgr-ray.png'
-import vera from './assets/mgr-vera.png'
-import don from './assets/mgr-don.png'
+import mike from './assets/mogul-mike.webp'
+import ray from './assets/mgr-ray.webp'
+import vera from './assets/mgr-vera.webp'
+import don from './assets/mgr-don.webp'
 
 export const CHAR_ART = { mike, ray, vera, don }
 export const CHAR_NAMES = {
