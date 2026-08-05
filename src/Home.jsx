@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import logo from './assets/logo-text.png'
-import cloud1 from './assets/cloud1.png'
-import cloud2 from './assets/cloud2.png'
-import bg from './assets/home-bg.png'
-import bgNight from './assets/home-bg-night.png'
+import logo from './assets/logo-text.webp'
+import cloud1 from './assets/cloud1.webp'
+import cloud2 from './assets/cloud2.webp'
+import bg from './assets/home-bg.webp'
+import bgMobile from './assets/home-bg-mobile.webp'
+import bgNight from './assets/home-bg-night.webp'
+import bgNightMobile from './assets/home-bg-night-mobile.webp'
 import { sfx, applyAudioSettings } from './sound.js'
 import { GameSettings } from './SettingsModal.jsx'
 import { fmtB, fmt, BLOCK_SYM, CASH_SYM, cashPerHour, managerBonus } from './economy.js'
@@ -86,6 +88,17 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
   }, [settings])
   const connected = !!player?.address
   const level = levelFromXp(save.xp ?? 0)
+
+  // Phones get a portrait crop of the city art — the wide desktop image
+  // covers to an empty sky/park slice on narrow screens.
+  const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 560px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 560px)')
+    const on = (e) => setNarrow(e.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  const bgUrl = settings.night ? (narrow ? bgNightMobile : bgNight) : (narrow ? bgMobile : bg)
 
   const myRevenue = useMemo(() => {
     const owned = Object.values(save.owned || {})
@@ -187,7 +200,7 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
   const close = () => { sfx.close(); setModal(null); setPendingPlay(false) }
 
   return (
-    <div className="home" style={{ backgroundImage: `url(${settings.night ? bgNight : bg})` }}>
+    <div className="home" style={{ backgroundImage: `url(${bgUrl})` }}>
       <div className="home-sky-tint" />
       <img className="cloud cloud-a" src={cloud1} alt="" />
       <img className="cloud cloud-b" src={cloud2} alt="" />
@@ -199,7 +212,7 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
       </div>
 
       <div className="home-inner menu">
-        <img className="home-wordmark" src={logo} alt="Sol Estates" />
+        <img className="home-wordmark" src={logo} alt="Sol Estates" fetchpriority="high" />
 
         <button className="play-btn" onClick={handlePlay}>▶ &nbsp;PLAY</button>
 

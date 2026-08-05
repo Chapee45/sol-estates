@@ -29,7 +29,7 @@ import {
 } from './state.js'
 import themeMusic from './assets/theme.mp3'
 import ambienceSfx from './assets/ambience.mp3'
-import logoArt from './assets/logo-text.png'
+import logoArt from './assets/logo-text.webp'
 
 const SAVE_KEY = 'blocklord-save-v1'
 const MIN_POI_ZOOM = 11

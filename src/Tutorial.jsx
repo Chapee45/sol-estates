@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import avatar from './assets/mogul-mike.png'
+import avatar from './assets/mogul-mike.webp'
 import { fmt } from './economy.js'
 import { sfx } from './sound.js'
 
