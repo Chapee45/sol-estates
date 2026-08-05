@@ -1,5 +1,10 @@
 // Phantom wallet (Solana) integration.
-// Uses the injected provider — no SDK needed for connect/identity.
+// Desktop uses the injected provider; mobile uses Phantom's connect deeplink
+// protocol — straight into the app's approval sheet, then back to the browser
+// with the wallet address (encrypted to our session keypair).
+
+import nacl from 'tweetnacl'
+import bs58 from 'bs58'
 
 export function getPhantom() {
   if (window.phantom?.solana?.isPhantom) return window.phantom.solana
@@ -9,41 +14,69 @@ export function getPhantom() {
 
 export const isMobile = () => /android|iphone|ipad|ipod/i.test(navigator.userAgent)
 
-// Reopen the game inside Phantom's in-app browser, where the wallet is
-// injected. The ?phantom=connect flag lets App.jsx resume the connect there.
-// The phantom:// scheme launches the installed app directly — iOS won't
-// trigger the https universal link from a JS navigation, it just loads
-// phantom.com. The https link stays as a fallback for the not-installed case.
-export function openInPhantomApp() {
-  const url = new URL(window.location.href)
-  url.searchParams.set('phantom', 'connect')
-  const target = encodeURIComponent(url.toString())
-  const ref = encodeURIComponent(window.location.origin)
-  window.location.href = `phantom://browse/${target}?ref=${ref}`
-  setTimeout(() => {
-    if (!document.hidden) {
-      window.location.href = `https://phantom.app/ul/browse/${target}?ref=${ref}`
-    }
-  }, 2000)
+// x25519 keypair Phantom encrypts its deeplink responses to. Persisted so the
+// return trip (a fresh page load) can still decrypt.
+const DL_KEY = 'phantom-deeplink-kp-v1'
+function dappKeyPair() {
+  try {
+    const s = JSON.parse(localStorage.getItem(DL_KEY))
+    if (s?.pk && s?.sk) return { publicKey: bs58.decode(s.pk), secretKey: bs58.decode(s.sk) }
+  } catch { /* regenerate below */ }
+  const kp = nacl.box.keyPair()
+  localStorage.setItem(DL_KEY, JSON.stringify({ pk: bs58.encode(kp.publicKey), sk: bs58.encode(kp.secretKey) }))
+  return kp
 }
 
-// Phantom's in-app browser can inject the provider after our scripts run.
-export async function waitForPhantom(ms = 3000) {
-  const t0 = Date.now()
-  while (Date.now() - t0 < ms) {
-    const p = getPhantom()
-    if (p) return p
-    await new Promise((r) => setTimeout(r, 100))
+// Open the Phantom app directly on its Connect approval — no in-app browser,
+// no phantom.app interstitial. Phantom redirects back to us with the address.
+export function openPhantomConnect() {
+  const back = new URL(window.location.href)
+  back.searchParams.set('phantom', 'return')
+  const q = new URLSearchParams({
+    app_url: window.location.origin,
+    dapp_encryption_public_key: bs58.encode(dappKeyPair().publicKey),
+    redirect_link: back.toString(),
+    cluster: 'mainnet-beta',
+  })
+  window.location.href = `phantom://v1/connect?${q}`
+  // Download page only if Phantom never took over. The timer is suspended
+  // while the app is foregrounded, so it can fire late on our return —
+  // visibilitychange records that the app did open and cancels the fallback.
+  let left = false
+  const mark = () => { if (document.hidden) left = true }
+  document.addEventListener('visibilitychange', mark)
+  setTimeout(() => {
+    document.removeEventListener('visibilitychange', mark)
+    if (!left && !document.hidden) window.location.href = 'https://phantom.app/download'
+  }, 2500)
+}
+
+// Parse ?phantom=return&... when Phantom bounces back after approval.
+// Returns null (not a Phantom return), {address} or {error}.
+export function handlePhantomReturn() {
+  const q = new URLSearchParams(window.location.search)
+  if (q.get('phantom') !== 'return') return null
+  if (q.get('errorCode')) return { error: q.get('errorMessage') || 'Phantom connection was cancelled.' }
+  const pk = q.get('phantom_encryption_public_key')
+  const nonce = q.get('nonce')
+  const data = q.get('data')
+  if (!pk || !nonce || !data) return null
+  try {
+    const shared = nacl.box.before(bs58.decode(pk), dappKeyPair().secretKey)
+    const opened = nacl.box.open.after(bs58.decode(data), bs58.decode(nonce), shared)
+    if (!opened) return { error: 'Could not verify Phantom’s response — try connecting again.' }
+    return { address: JSON.parse(new TextDecoder().decode(opened)).public_key }
+  } catch {
+    return { error: 'Could not read Phantom’s response — try connecting again.' }
   }
-  return null
 }
 
 export async function connectPhantom() {
   const provider = getPhantom()
   if (!provider) {
     if (isMobile()) {
-      openInPhantomApp()
-      throw new Error('Opening the Phantom app… finish connecting there.')
+      openPhantomConnect()
+      throw new Error('Opening Phantom — approve the connection there.')
     }
     window.open('https://phantom.app/', '_blank')
     throw new Error('Phantom not detected. Install the extension, then refresh and try again.')

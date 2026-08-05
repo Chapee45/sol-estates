@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Home from './Home.jsx'
 import Game from './Game.jsx'
-import { connectPhantom, disconnectPhantom, waitForPhantom } from './wallet.js'
+import { connectPhantom, disconnectPhantom, handlePhantomReturn } from './wallet.js'
 import { sfx, kickMusic } from './sound.js'
 
 const PLAYER_KEY = 'blocklord-player-v1'
@@ -32,17 +32,22 @@ export default function App() {
     return () => document.removeEventListener('pointerover', onOver)
   }, [])
 
-  // Back from the mobile deeplink: the game is now inside Phantom's in-app
-  // browser, so finish the connect the player started on the outside browser.
+  // Back from the Phantom app: after the player approves the connection,
+  // Phantom redirects here with the wallet address encrypted in the query.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('phantom') !== 'connect') return
-    params.delete('phantom')
-    const qs = params.toString()
-    window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''))
-    waitForPhantom().then((p) => {
-      if (p && !loadPlayer()?.address) onConnectWallet()
-    })
+    const res = handlePhantomReturn()
+    if (!res) return
+    const url = new URL(window.location.href)
+    for (const k of ['phantom', 'phantom_encryption_public_key', 'nonce', 'data', 'errorCode', 'errorMessage']) {
+      url.searchParams.delete(k)
+    }
+    window.history.replaceState({}, '', url.pathname + url.search)
+    if (res.error) {
+      setError(res.error)
+    } else if (res.address) {
+      sfx.buy()
+      savePlayer({ ...(loadPlayer() || { tutorialDone: false }), address: res.address, mode: 'phantom' })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
