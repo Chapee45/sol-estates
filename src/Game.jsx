@@ -518,6 +518,32 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutStep])
 
+  // Badge-explainer step: pin an anchor onto the priciest badge on screen so
+  // the coach-mark spotlight points at a real map icon.
+  const BADGE_STEP = TUT_STEPS.findIndex(s => s.target === '[data-tut="badge"]')
+  const [badgePt, setBadgePt] = useState(null)
+  useEffect(() => {
+    if (tutStep !== BADGE_STEP) { setBadgePt(null); return }
+    const map = mapRef.current
+    if (!map) return
+    let target = null
+    const place = () => {
+      const b = map.getBounds()
+      if (!target || !b.contains([target.lon, target.lat])) {
+        target = [...poisRef.current.values()]
+          .filter(p => b.contains([p.lon, p.lat]))
+          .sort((a, c) => c.price - a.price)[0] || null
+      }
+      if (!target) { setBadgePt(null); return }
+      const pt = map.project([target.lon, target.lat])
+      setBadgePt({ x: pt.x, y: pt.y })
+    }
+    place()
+    const iv = setInterval(place, 250)
+    return () => clearInterval(iv)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutStep])
+
   // Advance the tutorial the moment they buy their starter
   const ownedCount = ownedList.length
   const prevOwnedCount = useRef(ownedCount)
@@ -725,6 +751,12 @@ export default function Game({ player, onLogout, onTutorialDone }) {
   return (
     <div className="app">
       <div ref={mapDiv} className="map" />
+      {badgePt && (
+        <div
+          data-tut="badge"
+          style={{ position: 'absolute', left: badgePt.x - 34, top: badgePt.y - 34, width: 68, height: 68, pointerEvents: 'none', zIndex: 4 }}
+        />
+      )}
 
       <header className="hud">
         <div className="hud-row">

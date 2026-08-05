@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "DEPLOY_BASE=/sol-estates/ vite build && npx gh-pages -d dist"
+    "deploy": "vite build && npx gh-pages -d dist"
   },
   "dependencies": {
     "@fontsource/baloo-2": "^5.3.0",

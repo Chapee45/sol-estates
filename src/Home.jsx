@@ -64,6 +64,10 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
   const [name, setName] = useState('')
   const [pfp, setPfp] = useState({ type: 'image', value: '' })
   const [charSel, setCharSel] = useState(CHAR_PFPS[0].id)
+  const [pendingPlay, setPendingPlay] = useState(false)
+  const [locQ, setLocQ] = useState('')
+  const [locHits, setLocHits] = useState([])
+  const [homeSel, setHomeSel] = useState(null) // {lat, lon, label} from city search
   const fileRef = useRef(null)
   const nameOk = /^[a-zA-Z0-9_ ]{3,16}$/.test(name.trim())
 
@@ -131,12 +135,43 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
 
   function handlePlay() {
     sfx.click()
+    if (!connected) { setPendingPlay(true); setModal('wallet'); return }
     if (player?.name) onPlay()
     else setModal('profile')
   }
 
+  // Once Phantom connects, continue the interrupted PLAY press
+  useEffect(() => {
+    if (connected && pendingPlay) {
+      setPendingPlay(false)
+      if (player?.name) onPlay()
+      else setModal('profile')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected])
+
+  // City search (Photon/OSM geocoder — free, worldwide, no key)
+  useEffect(() => {
+    const q = locQ.trim()
+    if (q.length < 2 || (homeSel && q === homeSel.label)) { setLocHits([]); return }
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5&lang=en`)
+        const j = await r.json()
+        setLocHits((j.features || [])
+          .filter(f => f.geometry?.coordinates)
+          .map(f => ({
+            lat: f.geometry.coordinates[1],
+            lon: f.geometry.coordinates[0],
+            label: [f.properties.name, f.properties.state, f.properties.country].filter(Boolean).join(', '),
+          })))
+      } catch { setLocHits([]) }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [locQ, homeSel])
+
   const open = (m) => { sfx.open(); setModal(m) }
-  const close = () => { sfx.close(); setModal(null) }
+  const close = () => { sfx.close(); setModal(null); setPendingPlay(false) }
 
   return (
     <div className="home" style={{ backgroundImage: `url(${bg})` }}>
@@ -144,6 +179,11 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
       <img className="cloud cloud-a" src={cloud1} alt="" />
       <img className="cloud cloud-b" src={cloud2} alt="" />
       <img className="cloud cloud-c" src={cloud1} alt="" />
+
+      <div className="home-hud">
+        <span className="hud-chip">{CASH_SYM}{fmt(save.cash ?? 0)}</span>
+        <span className="hud-chip sol">{BLOCK_SYM}{fmtB(estate)}</span>
+      </div>
 
       <div className="home-inner menu">
         <img className="home-wordmark" src={logo} alt="Sol Estates" />
@@ -207,17 +247,38 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
                 value={name}
                 onChange={e => setName(e.target.value)}
               />
+              <div className="loc-search">
+                <input
+                  className="name-input"
+                  placeholder="🔍 Search any city in the world…"
+                  value={locQ}
+                  onChange={e => { setLocQ(e.target.value); if (homeSel) setHomeSel(null) }}
+                />
+                {locHits.length > 0 && (
+                  <div className="loc-hits">
+                    {locHits.map((h, i) => (
+                      <button
+                        key={h.label + i}
+                        className="loc-hit"
+                        onClick={() => { sfx.select(); setHomeSel(h); setLocQ(h.label); setLocHits([]) }}
+                      >📍 {h.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 className="primary"
                 disabled={!nameOk}
-                onClick={() => { sfx.buy(); onCreateProfile({ name: name.trim(), pfp }, true) }}
+                onClick={() => { sfx.buy(); onCreateProfile({ name: name.trim(), pfp }, homeSel || 'auto') }}
               >
-                {nameOk ? 'Start in my neighborhood 📍' : 'Choose a username'}
+                {!nameOk ? 'Choose a username'
+                  : homeSel ? `Start in ${homeSel.label.split(',')[0]} 📍`
+                  : 'Start in my neighborhood 📍'}
               </button>
               <button
                 className="guest-btn"
                 disabled={!nameOk}
-                onClick={() => { sfx.click(); onCreateProfile({ name: name.trim(), pfp }, false) }}
+                onClick={() => { sfx.click(); onCreateProfile({ name: name.trim(), pfp }, null) }}
               >
                 Start in New York
               </button>
@@ -255,7 +316,7 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
         <div className="modal-backdrop" onClick={close}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-head">
-              <h3>👛 Wallet</h3>
+              <h3>👛 {pendingPlay ? 'Connect to play' : 'Wallet'}</h3>
               <button className="close-flat" onClick={close}>✕</button>
             </div>
             {connected ? (
@@ -274,12 +335,14 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
             ) : (
               <>
                 <p className="market-note">
-                  Connect your Phantom wallet to secure your account and receive
-                  <b> $ESTATE</b> withdrawals when the token goes live.
+                  {pendingPlay
+                    ? <>Sol Estates runs on your Phantom wallet — it secures your empire and receives your <b>$ESTATE</b> earnings. Connect to start playing.</>
+                    : <>Connect your Phantom wallet to secure your account and receive <b>$ESTATE</b> withdrawals when the token goes live.</>}
                 </p>
                 <button className="primary" onClick={() => { sfx.click(); onConnectWallet() }} disabled={connecting}>
                   {connecting ? 'Connecting…' : 'Connect Phantom'}
                 </button>
+                {error && <p className="home-err">{error}</p>}
               </>
             )}
           </div>

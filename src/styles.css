@@ -762,6 +762,57 @@ button.chip:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1p
 }
 
 /* ================= Account / PFP ================= */
+/* home menu balance HUD */
+.home-hud {
+  position: absolute;
+  top: 14px; right: 14px;
+  display: flex; gap: 8px;
+  z-index: 6;
+}
+.hud-chip {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ink);
+  background: #fff;
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  padding: 5px 14px;
+  box-shadow: 0 3px 0 var(--ink);
+}
+.hud-chip.sol {
+  background: linear-gradient(90deg, #d8ffee, #eadcff);
+}
+
+/* city search in profile modal */
+.loc-search { position: relative; width: 100%; }
+.loc-hits {
+  position: absolute;
+  top: calc(100% + 4px); left: 0; right: 0;
+  background: #fff;
+  border: 2.5px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 0 5px 0 var(--ink);
+  overflow: hidden;
+  z-index: 10;
+}
+.loc-hit {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 13px;
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+  background: #fff;
+  border: none;
+  border-bottom: 1.5px solid #eceafe;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.loc-hit:last-child { border-bottom: none; }
+.loc-hit:hover { background: #fff4d6; }
+
 .pfp-preview {
   width: 96px; height: 96px;
   border-radius: 50%;

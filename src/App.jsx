@@ -43,15 +43,17 @@ export default function App() {
     setStage('play')
   }
 
-  // First-time player finished the profile card; optionally locate them
-  function onCreateProfile(profile, useLocation) {
+  // First-time player finished the profile card.
+  // home: {lat, lon} from the city search, 'auto' to locate them, or null for the default city.
+  function onCreateProfile(profile, home) {
     kickMusic()
     const base = { ...(player || {}), ...profile, mode: player?.address ? 'phantom' : 'guest', tutorialDone: false }
-    const go = (home) => {
-      savePlayer(home ? { ...base, home } : base)
+    const go = (h) => {
+      savePlayer(h ? { ...base, home: { lat: h.lat, lon: h.lon } } : base)
       setStage('play')
     }
-    if (!useLocation) return go(null)
+    if (home && home !== 'auto') return go(home)
+    if (home !== 'auto') return go(null)
     if (!navigator.geolocation) return ipFallback(go)
     navigator.geolocation.getCurrentPosition(
       (pos) => go({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
@@ -60,9 +62,16 @@ export default function App() {
     )
   }
 
+  // Two independent IP-location services before giving up — either can be
+  // rate-limited or blocked, and a failed lookup should never strand the player.
   async function ipFallback(go) {
     try {
       const r = await fetch('https://ipapi.co/json/')
+      const j = await r.json()
+      if (j.latitude && j.longitude) return go({ lat: j.latitude, lon: j.longitude })
+    } catch { /* try next */ }
+    try {
+      const r = await fetch('https://ipwho.is/')
       const j = await r.json()
       if (j.latitude && j.longitude) return go({ lat: j.latitude, lon: j.longitude })
     } catch { /* default city */ }
