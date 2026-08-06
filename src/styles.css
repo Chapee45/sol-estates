@@ -806,6 +806,94 @@ button.chip:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1p
 }
 .sig-saved-btn:hover { background: #efe9ff; }
 
+/* ---- in-game ☰ menu ---- */
+.icon-btn.burger { font-size: 16px; }
+.menu-veil { position: fixed; inset: 0; z-index: 9; }
+.hud-menu {
+  position: absolute;
+  top: 100%; right: 10px;
+  margin-top: 6px;
+  z-index: 15;
+  background: var(--card);
+  border: 2.5px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 5px 0 var(--ink), var(--shadow-pop);
+  overflow: hidden;
+  min-width: 235px;
+  animation: menu-pop 0.16s var(--bounce);
+}
+@keyframes menu-pop { from { transform: translateY(-6px) scale(0.97); opacity: 0; } }
+.hud-menu button {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  width: 100%;
+  background: none; border: none;
+  border-bottom: 1.5px solid var(--card-2);
+  padding: 10px 14px;
+  font-family: var(--font);
+  font-weight: 800; font-size: 14px;
+  color: var(--text);
+  text-align: left;
+}
+.hud-menu button:last-child { border-bottom: none; }
+.hud-menu button:hover { background: var(--card-2); }
+.hud-menu small { font-weight: 700; font-size: 11px; color: var(--muted); }
+.menu-account { display: flex; align-items: center; gap: 7px; }
+
+/* ---- market value chart ---- */
+.value-chart {
+  margin-top: 10px;
+  background: var(--card-2);
+  border-radius: 12px;
+  padding: 9px 11px 7px;
+}
+.value-chart svg { display: block; width: 100%; height: 58px; }
+.vc-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.vc-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: var(--muted); }
+.vc-now { font-size: 15px; }
+.vc-delta { margin-left: auto; font-weight: 800; font-size: 12.5px; }
+.vc-delta small { font-weight: 700; color: var(--muted); }
+.vc-paid { margin-top: 4px; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+
+/* ---- sell row ---- */
+.sell-row { display: flex; gap: 8px; margin-top: 9px; }
+.sell-open, .sell-confirm, .sell-cancel {
+  flex: 1;
+  font-family: var(--font);
+  font-weight: 800;
+  font-size: 13.5px;
+  border-radius: 12px;
+  padding: 9px 10px;
+  border: 2.5px solid var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
+}
+.sell-open { background: var(--card); color: var(--text); }
+.sell-open small { font-weight: 700; color: var(--muted); }
+.sell-confirm { background: linear-gradient(180deg, #ff8a8e, var(--red)); color: #fff; }
+.sell-cancel { flex: 0 0 auto; background: var(--card-2); color: var(--text); }
+
+/* ---- news wire ---- */
+.news-modal { max-height: 78vh; display: flex; flex-direction: column; }
+.news-list { overflow-y: auto; display: flex; flex-direction: column; gap: 7px; padding-right: 2px; }
+.news-row {
+  display: flex; flex-direction: column; gap: 3px;
+  text-align: left;
+  background: var(--card-2);
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-family: var(--font);
+  color: var(--text);
+}
+.news-row:hover { border-color: var(--gold-2); }
+.news-meta { display: flex; align-items: baseline; gap: 7px; font-size: 11px; }
+.news-meta b { color: var(--purple); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.news-meta small { color: var(--muted); font-weight: 700; }
+.news-headline { font-weight: 800; font-size: 13px; line-height: 1.35; }
+
+/* ---- marketplace listing tags ---- */
+.deal-tag { color: var(--green); font-weight: 800; }
+.premium-tag { color: var(--red); font-weight: 800; }
+
 /* home menu balance HUD */
 .home-hud {
   position: absolute;

@@ -5,6 +5,7 @@ import { collectPOIs, selectSpawned, isSpawnedId } from './pois.js'
 import { sampleViewport } from './tileSampler.js'
 import { indexCandidate, displayLevel } from './lod.js'
 import { fetchPhoto } from './photos.js'
+import { marketPrice, sellQuote, priceHistory, newsFeed, worldListings } from './market.js'
 import { shortAddr } from './wallet.js'
 import { registerMapIcons } from './mapIcons.js'
 import Tutorial, { TUT_STEPS } from './Tutorial.jsx'
@@ -61,6 +62,42 @@ function loadSave() {
 
 let toastSeq = 0
 
+// 7-day market value sparkline for the property panel
+function ValueChart({ poi, now, paid }) {
+  const pts = priceHistory(poi, now)
+  const min = Math.min(...pts), max = Math.max(...pts)
+  const range = Math.max(1, max - min)
+  const W = 280, H = 64
+  const xy = pts.map((v, i) => `${(i / (pts.length - 1)) * W},${H - 6 - ((v - min) / range) * (H - 14)}`)
+  const up = pts[pts.length - 1] >= pts[0]
+  const col = up ? 'var(--green)' : 'var(--red)'
+  const delta = Math.round(((pts[pts.length - 1] - pts[0]) / pts[0]) * 100)
+  return (
+    <div className="value-chart">
+      <div className="vc-head">
+        <span className="vc-label">Market value</span>
+        <b className="vc-now">{CASH_SYM}{fmt(pts[pts.length - 1])}</b>
+        <span className="vc-delta" style={{ color: col }}>{up ? '▲' : '▼'} {Math.abs(delta)}% <small>7d</small></span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+        <polygon points={`0,${H} ${xy.join(' ')} ${W},${H}`} fill={col} opacity="0.12" />
+        <polyline points={xy.join(' ')} fill="none" stroke={col} strokeWidth="2" strokeLinejoin="round" />
+        {paid != null && paid >= min && paid <= max && (
+          <line x1="0" x2={W} y1={H - 6 - ((paid - min) / range) * (H - 14)} y2={H - 6 - ((paid - min) / range) * (H - 14)}
+            stroke="var(--muted)" strokeWidth="1" strokeDasharray="4 4" />
+        )}
+      </svg>
+      {paid != null && (
+        <div className="vc-paid">
+          You paid {CASH_SYM}{fmt(paid)} · {pts[pts.length - 1] >= paid
+            ? <span style={{ color: 'var(--green)' }}>up {Math.round(((pts[pts.length - 1] - paid) / paid) * 100)}%</span>
+            : <span style={{ color: 'var(--red)' }}>down {Math.round(((paid - pts[pts.length - 1]) / paid) * 100)}%</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Game({ player, onLogout, onTutorialDone }) {
   const save = useRef(loadSave()).current
   const mapDiv = useRef(null)
@@ -85,7 +122,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
   const [zoomedOut, setZoomedOut] = useState(false)
   const [showPortfolio, setShowPortfolio] = useState(false)
   const [showMarket, setShowMarket] = useState(false)
-  const [marketTab, setMarketTab] = useState('auctions')
+  const [marketTab, setMarketTab] = useState('global')
   const [showSettings, setShowSettings] = useState(false)
   const [search, setSearch] = useState('')
   const [tutStep, setTutStep] = useState(player.tutorialDone ? null : 0)
@@ -99,6 +136,10 @@ export default function Game({ player, onLogout, onTutorialDone }) {
   const [popup, setPopup] = useState(null)
   const [showNearby, setShowNearby] = useState(false)
   const [nearbySort, setNearbySort] = useState('distance')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [showNews, setShowNews] = useState(false)
+  const [sellArmed, setSellArmed] = useState(false)
+  const lastNewsRef = useRef(null)
   const capWarnedRef = useRef(false)
   const popupSeq = useRef(0)
   const [, setAuctionTick] = useState(0)
@@ -178,6 +219,23 @@ export default function Game({ player, onLogout, onTutorialDone }) {
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
+  }, [])
+
+  // News wire: toast when a fresh report drops (no spam on first load)
+  useEffect(() => {
+    const check = () => {
+      const latest = newsFeed(Date.now(), 1)[0]
+      if (!latest) return
+      if (lastNewsRef.current === null) { lastNewsRef.current = latest.id; return }
+      if (latest.id > lastNewsRef.current) {
+        lastNewsRef.current = latest.id
+        toast(latest.headline.length > 90 ? latest.headline.slice(0, 88) + '…' : latest.headline, '📰')
+      }
+    }
+    check()
+    const iv = setInterval(check, 30000)
+    return () => clearInterval(iv)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Managers auto-collect their properties every 20s (and on load = offline earnings)
@@ -535,9 +593,9 @@ export default function Game({ player, onLogout, onTutorialDone }) {
       if (cancelled) return
       const cands = [...poisRef.current.values()]
         .filter(p => !ownedRef.current[p.id]
-          && p.price <= cash
+          && marketPrice(p) <= cash
           && levelFromXp(xp) >= (TIER_UNLOCK[p.tier] || 1))
-        .sort((a, b) => a.price - b.price)
+        .sort((a, b) => marketPrice(a) - marketPrice(b))
       if (cands.length) {
         const pick = cands[0]
         setStarter(pick)
@@ -594,36 +652,57 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     const unlockAt = TIER_UNLOCK[poi.tier] || 1
     if (level < unlockAt) { sfx.error(); toast(`${TIER_META[poi.tier].label}s unlock at Level ${unlockAt}`, '·'); return }
     if (ownedList.length >= slots) { sfx.error(); toast('No permits available — level up or acquire one in your Portfolio', '·'); return }
-    if (currency === 'cash' && cash < poi.price) return
-    if (currency === 'block' && block < blockPriceFor(poi.price)) return
+    const mkt = marketPrice(poi)
+    if (currency === 'cash' && cash < mkt) return
+    if (currency === 'block' && block < blockPriceFor(mkt)) return
     sfx.open()
-    setContract({ poi, currency })
+    setContract({ poi, currency, ask: mkt })
   }
 
   function completeBuy(sigDataUrl) {
     if (!contract) return
-    const { poi, currency } = contract
+    const { poi, currency, ask } = contract
+    const paid = ask ?? marketPrice(poi)
     setContract(null)
     if (sigDataUrl && sigDataUrl !== signature) setSignature(sigDataUrl)
     if (owned[poi.id]) return
     if (currency === 'cash') {
-      if (cash < poi.price) return
-      setCash(c => c - poi.price)
+      if (cash < paid) return
+      setCash(c => c - paid)
     } else {
-      const bPrice = blockPriceFor(poi.price)
+      const bPrice = blockPriceFor(paid)
       if (block < bPrice) return
       setBlock(b => b - bPrice)
     }
     sfx.buy()
-    gainXp(xpForBuy(poi.price))
-    toast(`Deed recorded: ${poi.name} · +${fmt(xpForBuy(poi.price))} XP`, '✦')
+    gainXp(xpForBuy(paid))
+    toast(`Deed recorded: ${poi.name} · +${fmt(xpForBuy(paid))} XP`, '✦')
     setOwned(prev => ({
       ...prev,
       [poi.id]: {
         id: poi.id, name: poi.name, tier: poi.tier, rarity: poi.rarity, lat: poi.lat, lon: poi.lon,
-        price: poi.price, ups: 0, manager: false, lastCollect: Date.now(),
+        price: poi.price, paid, ups: 0, manager: false, lastCollect: Date.now(),
       },
     }))
+  }
+
+  // Buy a worldwide marketplace listing outright (player-to-player, simulated
+  // sellers until the backend goes live)
+  function buyListing(l) {
+    if (owned[l.id]) return
+    if (level < (TIER_UNLOCK[l.tier] || 1)) { sfx.error(); toast(`${TIER_META[l.tier].label} properties unlock at Level ${TIER_UNLOCK[l.tier]}`, '·'); return }
+    if (ownedList.length >= slots) { sfx.error(); toast('No permits available for this purchase', '·'); return }
+    if (cash < l.ask) { sfx.error(); return }
+    sfx.buy()
+    setCash(c => c - l.ask)
+    gainXp(xpForBuy(l.ask))
+    const rec = {
+      id: l.id, name: l.name, tier: l.tier, rarity: l.rarity, lat: l.lat, lon: l.lon,
+      price: l.price, paid: l.ask, ups: 0, manager: false, lastCollect: Date.now(),
+    }
+    poisRef.current.set(l.id, rec)
+    setOwned(prev => ({ ...prev, [l.id]: rec }))
+    toast(`Bought ${l.name} from ${l.seller} · ${l.deal > 0 ? l.deal + '% below market' : 'at market'}`, '🌍')
   }
 
   function upgrade(id) {
@@ -694,15 +773,21 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     toast(`Bid placed — ◈${fmt(amount)} on ${auction.poi.name}`, '·')
   }
 
-  function instantSell(p, offer) {
+  // Sell back to the game at 85% of live market value, paid in CASH
+  function instantSell(p) {
+    const quote = sellQuote(p)
     sfx.sell()
-    setBlock(b => b + offer)
+    setCash(c => c + quote)
+    setSellArmed(false)
+    setSelectedId(sid => (sid === p.id ? null : sid))
     setOwned(prev => {
       const next = { ...prev }
       delete next[p.id]
       return next
     })
-    toast(`Sold ${p.name} to the registry for ◈${fmt(offer)}`, '✦')
+    const paid = p.paid ?? p.price
+    const pl = quote - paid
+    toast(`Sold ${p.name} for ${CASH_SYM}${fmt(quote)} (${pl >= 0 ? '+' : '−'}${CASH_SYM}${fmt(Math.abs(pl))} on your buy)`, pl >= 0 ? '📈' : '📉')
   }
 
   async function onSearch(e) {
@@ -749,7 +834,9 @@ export default function Game({ player, onLogout, onTutorialDone }) {
   const selRar = sel ? RARITY_META[sel.rarity || 'common'] : null
   const selOwned = sel && !!owned[sel.id]
   const selUpgrades = sel ? (UPGRADES[sel.tier] || UPGRADES.shop) : []
-  const selBlockPrice = sel ? blockPriceFor(sel.price) : 0
+  const selMarket = sel ? marketPrice(sel, now) : 0
+  const selBlockPrice = sel ? blockPriceFor(selMarket) : 0
+  useEffect(() => { setSellArmed(false) }, [selectedId])
   const selUnlockAt = sel ? (TIER_UNLOCK[sel.tier] || 1) : 1
   const selLocked = sel && level < selUnlockAt
   const selCapped = sel && selOwned && !sel.manager && accrualHours(sel, now) >= UNMANAGED_CAP_HOURS
@@ -773,7 +860,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
       const dx = (p.lon - c.lng) * 111320 * Math.cos((c.lat * Math.PI) / 180)
       const dy = (p.lat - c.lat) * 110574
       const dist = Math.hypot(dx, dy)
-      if (dist < 4000) items.push({ ...p, dist })
+      if (dist < 4000) items.push({ ...p, dist, price: marketPrice(p, now) })
     }
     return sortNearby(items, nearbySort).slice(0, 40)
   })() : []
@@ -804,7 +891,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
             <button type="submit" className="go">GO</button>
           </form>
           <button className={'icon-btn' + (satellite ? ' on' : '')} title="Satellite view" onClick={toggleSatellite}>SAT</button>
-          <button className="icon-btn" title="Settings" onClick={() => { sfx.open(); setShowSettings(true) }}>⋯</button>
+          <button className={'icon-btn burger' + (menuOpen ? ' on' : '')} data-tut="menu" title="Menu" onClick={() => { sfx.open(); setMenuOpen(v => !v) }}>☰</button>
         </div>
         <div className="hud-row hud-row2">
           <button className="chip level-chip" onClick={() => { sfx.open(); setShowPortfolio(s => !s) }}>
@@ -818,18 +905,35 @@ export default function Game({ player, onLogout, onTutorialDone }) {
           <button className="chip collect-chip" data-tut="collect" disabled={!canCollect} onClick={collectAll}>
             Collect {CASH_SYM}{fmt(totalPendingCash)} · {BLOCK_SYM}{fmtB(totalPendingBlock)}
           </button>
-          <button className="chip" data-tut="permits" onClick={() => { sfx.open(); setShowPortfolio(s => !s) }}>
-            {ownedList.length}/{slots} held
-          </button>
-          <button className="chip" data-tut="market" onClick={() => { sfx.open(); setShowMarket(true) }}>Market</button>
-          <button className="chip" onClick={() => { sfx.open(); setShowNearby(v => !v) }}>Nearby</button>
-          <button className="chip player-chip" title="Account" onClick={() => { sfx.open(); setShowSettings(true) }}>
-            {player.pfp?.type === 'image'
-              ? <img className="pfp" src={player.pfp.value} alt="" />
-              : <span className="pfp-emoji">{player.pfp?.value || (player.mode === 'phantom' ? '👻' : '🛠')}</span>}
-            <span className="player-name">{player.name || (player.mode === 'phantom' ? shortAddr(player.address) : 'Dev')}</span>
-          </button>
         </div>
+        {menuOpen && (
+          <>
+            <div className="menu-veil" onClick={() => setMenuOpen(false)} />
+            <nav className="hud-menu">
+              <button onClick={() => { sfx.click(); setMenuOpen(false); setShowPortfolio(true) }}>
+                <span>📂 Portfolio</span><small>{ownedList.length}/{slots} permits</small>
+              </button>
+              <button onClick={() => { sfx.click(); setMenuOpen(false); setShowMarket(true) }}>
+                <span>🌍 Marketplace</span><small>{level < MARKETPLACE_LEVEL ? `unlocks Lv ${MARKETPLACE_LEVEL}` : 'auctions · listings'}</small>
+              </button>
+              <button onClick={() => { sfx.click(); setMenuOpen(false); setShowNews(true) }}>
+                <span>📰 News wire</span><small>market reports</small>
+              </button>
+              <button onClick={() => { sfx.click(); setMenuOpen(false); setShowNearby(true) }}>
+                <span>📍 Nearby</span><small>listings around you</small>
+              </button>
+              <button onClick={() => { sfx.click(); setMenuOpen(false); setShowSettings(true) }}>
+                <span className="menu-account">
+                  {player.pfp?.type === 'image'
+                    ? <img className="pfp" src={player.pfp.value} alt="" />
+                    : <span className="pfp-emoji">{player.pfp?.value || '👤'}</span>}
+                  {player.name || shortAddr(player.address)}
+                </span>
+                <small>account · settings</small>
+              </button>
+            </nav>
+          </>
+        )}
         {collectBurst && (
           <div className="collect-burst" key={collectBurst.id}>
             +{CASH_SYM}{fmt(collectBurst.c)} · +{BLOCK_SYM}{fmtB(collectBurst.b)}
@@ -838,6 +942,33 @@ export default function Game({ player, onLogout, onTutorialDone }) {
       </header>
 
       {zoomedOut && <div className="hint">Zoom in to reveal properties</div>}
+
+      {showNews && (
+        <div className="modal-backdrop" onClick={() => { sfx.close(); setShowNews(false) }}>
+          <div className="modal news-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>📰 Market News Wire</h3>
+              <button className="close-flat" onClick={() => { sfx.close(); setShowNews(false) }}>✕</button>
+            </div>
+            <p className="market-note">Reports land every few minutes. Traders read between the lines — a hot tip can mean a boom is coming… and sometimes the press gets it dead wrong.</p>
+            <div className="news-list">
+              {newsFeed(now).map(item => (
+                <button
+                  key={item.id}
+                  className="news-row"
+                  onClick={() => { sfx.select(); setShowNews(false); mapRef.current?.flyTo({ center: [item.lon, item.lat], zoom: 12.5 }) }}
+                >
+                  <span className="news-meta">
+                    <b>{item.outlet}</b>
+                    <small>{new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {item.region}</small>
+                  </span>
+                  <span className="news-headline">{item.headline}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="toasts">
         {toasts.map(t => <div key={t.id} className="toast">{t.icon} {t.msg}</div>)}
@@ -894,14 +1025,30 @@ export default function Game({ player, onLogout, onTutorialDone }) {
                     )
                   })}
                 </div>
+                <ValueChart poi={sel} now={now} paid={sel.paid ?? sel.price} />
+                <div className="sell-row">
+                  {sellArmed ? (
+                    <>
+                      <button className="sell-confirm" onClick={() => instantSell(sel)}>
+                        Confirm sale · {CASH_SYM}{fmt(sellQuote(sel, now))}
+                      </button>
+                      <button className="sell-cancel" onClick={() => { sfx.click(); setSellArmed(false) }}>Keep it</button>
+                    </>
+                  ) : (
+                    <button className="sell-open" onClick={() => { sfx.click(); setSellArmed(true) }}>
+                      Sell to registry · {CASH_SYM}{fmt(sellQuote(sel, now))} <small>(85% of market)</small>
+                    </button>
+                  )}
+                </div>
               </>
             ) : (
               <>
                 <div className="stats">
-                  <div><label>Price</label><b>{CASH_SYM}{fmt(sel.price)}<small> or </small>{BLOCK_SYM}{fmt(selBlockPrice)}</b></div>
+                  <div><label>Market value</label><b>{CASH_SYM}{fmt(selMarket)}<small> or </small>{BLOCK_SYM}{fmt(selBlockPrice)}</b></div>
                   <div><label>Yield</label><b>{CASH_SYM}{fmt(cashPerHour(sel.price, 0))} · {BLOCK_SYM}{fmtB(blockPerHour(sel.price, 0))}<small>/hr</small></b></div>
                   <div><label>Max yield</label><b>{CASH_SYM}{fmt(cashPerHour(sel.price, MAX_UPS))} · {BLOCK_SYM}{fmtB(blockPerHour(sel.price, MAX_UPS))}<small>/hr</small></b></div>
                 </div>
+                <ValueChart poi={sel} now={now} />
                 {selLocked ? (
                   <div className="locked-bar">{selMeta.label} properties unlock at <b>Level {selUnlockAt}</b></div>
                 ) : ownedList.length >= slots ? (
@@ -911,10 +1058,10 @@ export default function Game({ player, onLogout, onTutorialDone }) {
                     <button
                       className={'primary' + (tutDef?.mode === 'buy' && starter && sel.id === starter.id ? ' tut-glow' : '')}
                       data-tut="buy"
-                      disabled={cash < sel.price}
+                      disabled={cash < selMarket}
                       onClick={() => buy(sel, 'cash')}
                     >
-                      Acquire · {CASH_SYM}{fmt(sel.price)}
+                      Acquire · {CASH_SYM}{fmt(selMarket)}
                     </button>
                     <button className="primary block-buy" disabled={block < selBlockPrice} onClick={() => buy(sel, 'block')}>
                       {BLOCK_SYM}{fmt(selBlockPrice)}
@@ -974,6 +1121,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
         setTab={setMarketTab}
         onClose={() => setShowMarket(false)}
         level={level}
+        cash={cash}
         block={block}
         now={now}
         auctions={auctions}
@@ -982,6 +1130,8 @@ export default function Game({ player, onLogout, onTutorialDone }) {
         ownedList={ownedList}
         onInstantSell={instantSell}
         onFly={flyTo}
+        listings={showMarket ? worldListings(effectivePrice, now) : []}
+        onBuyListing={buyListing}
       />
 
       <SettingsModal

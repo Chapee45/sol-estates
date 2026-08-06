@@ -23,8 +23,8 @@ export const TUT_STEPS = [
       : 'Hold up… scanning the neighborhood for a bargain…',
   },
   { mode: 'dialog', target: '[data-tut="manager"]', text: () => "YESSS! 🎉 You're an owner — it's earning right now. But see this bar? No manager = rent STOPS after 8 hours. Managers (Level 5) collect forever, +10% yield." },
-  { mode: 'dialog', target: '[data-tut="permits"]', text: () => "Your permits. You can only HOLD so many properties — level up (or spend ◈) for more. Levels also unlock better tiers… landmarks at Level 8." },
-  { mode: 'dialog', target: '[data-tut="market"]', text: () => "The Marketplace — opens at Level 3. Hourly auctions on hot properties, and instant-sell when you need ◈ or permits back." },
+  { mode: 'dialog', target: '[data-tut="menu"]', text: () => "This menu is mission control: your Portfolio (permits — you can only HOLD so many properties, level up for more), the worldwide Marketplace, and the News wire." },
+  { mode: 'dialog', target: '[data-tut="menu"]', text: () => "Watch the News wire in there. Markets boom and crash over hours — buy before the surge, sell before the slump. But careful… the press isn't always right." },
   { mode: 'dialog', target: '[data-tut="collect"]', text: () => "And THIS is the money button. Rent piles up here — collect, reinvest, repeat. Build the biggest empire on the planet. Now get to work! 💼" },
 ]
 

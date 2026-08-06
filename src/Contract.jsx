@@ -86,12 +86,13 @@ export default function Contract({ contract, playerName, signature, onComplete, 
   useEffect(() => { setDrawn(null); setAffixed(false); setPadKey(k => k + 1) }, [contract])
 
   if (!contract) return null
-  const { poi, currency } = contract
+  const { poi, currency, ask } = contract
+  const agreed = ask ?? poi.price
   const meta = TIER_META[poi.tier] || TIER_META.shop
   const rar = RARITY_META[poi.rarity || 'common']
   const priceStr = currency === 'cash'
-    ? `${CASH_SYM}${fmt(poi.price)}`
-    : `${BLOCK_SYM}${fmt(blockPriceFor(poi.price))} $ESTATE`
+    ? `${CASH_SYM}${fmt(agreed)}`
+    : `${BLOCK_SYM}${fmt(blockPriceFor(agreed))} $ESTATE`
   const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   const signed = !!drawn || affixed
   const sigImage = drawn || (affixed ? signature : null)
