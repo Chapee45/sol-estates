@@ -15,7 +15,7 @@ import Contract from './Contract.jsx'
 import StaffModal from './StaffModal.jsx'
 import NearbyPanel, { sortNearby } from './NearbyPanel.jsx'
 import { CHAR_ART, CHAR_NAMES, CHAR_LINES } from './characters.js'
-import { sfx, applyAudioSettings, initMusic, initAmbience, initVoice, kickMusic } from './sound.js'
+import { sfx, applyAudioSettings, initMusic, initAmbience, kickMusic } from './sound.js'
 import {
   TIER_META, UPGRADES, UPGRADE_RENT_MULT, MAX_UPS, RARITY_META, rarityOf,
   START_CASH, START_BLOCK,
@@ -30,7 +30,6 @@ import {
 } from './state.js'
 import themeMusic from './assets/theme.mp3'
 import ambienceSfx from './assets/ambience.mp3'
-import mikeHey from './assets/mike-hey.mp3'
 import logoArt from './assets/logo-text.webp'
 
 const SAVE_KEY = 'blocklord-save-v1'
@@ -163,7 +162,6 @@ export default function Game({ player, onLogout, onTutorialDone }) {
   // Character popups — one at a time, auto-dismissed
   function showPopup(char, text) {
     const id = ++popupSeq.current
-    sfx.mike()
     setPopup({ id, char, text })
     setTimeout(() => setPopup(p => (p?.id === id ? null : p)), 6500)
   }
@@ -184,7 +182,6 @@ export default function Game({ player, onLogout, onTutorialDone }) {
   useEffect(() => {
     initMusic(themeMusic)
     initAmbience(ambienceSfx)
-    initVoice(mikeHey)
     const kick = () => kickMusic()
     document.addEventListener('pointerdown', kick)
     return () => document.removeEventListener('pointerdown', kick)

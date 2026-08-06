@@ -32,9 +32,6 @@ export default function Tutorial({ step, ctx, onNext, onSkip }) {
   const def = TUT_STEPS[step]
   const [rect, setRect] = useState(null)
 
-  // Mike murmurs a little "Hey!" each time he pops up with a new step
-  useEffect(() => { sfx.mike() }, [step])
-
   // Track the highlighted element's position (it can move/animate)
   useEffect(() => {
     if (!def.target) { setRect(null); return }

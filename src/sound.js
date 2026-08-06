@@ -67,16 +67,6 @@ export function initScribble(url) {
   pen = new Audio(url)
   pen.loop = true
 }
-
-// Mogul Mike's little "Hey!" — plays when he pops up (tutorial steps,
-// character popups). Throttled so rapid step-skipping doesn't stack voices.
-let mike = null
-let lastMike = 0
-export function initVoice(url) {
-  if (mike) return
-  mike = new Audio(url)
-}
-
 // Push saved settings into the mixer in one call
 export function applyAudioSettings(s = {}) {
   setSfx(s.sfx ?? true)
@@ -161,16 +151,6 @@ function note(freq, dur = 0.14, vol = 0.06, delay = 0) {
 let lastHover = 0
 
 export const sfx = {
-  // gentle voice blip when Mike appears
-  mike: () => {
-    if (!sfxOn || !mike) return
-    const t = performance.now()
-    if (t - lastMike < 1200) return
-    lastMike = t
-    mike.volume = Math.min(1, 0.55 * (sfxVol / 0.6))
-    mike.currentTime = 0
-    mike.play().catch(() => {})
-  },
   // real pencil scratch while drawing a signature — loop plays while the pen
   // moves, auto-pauses ~140ms after strokes stop
   scribble: () => {
