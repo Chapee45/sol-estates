@@ -1,9 +1,10 @@
-// Property photos: REAL photos only — never satellite, never generated art.
+// Property photos — every property always gets one, best source first:
 //   1. Wikipedia lead image  — actual photo of the place, name-matched nearby
-//   2. Wikimedia Commons     — nearest geotagged real photo within ~100m
-//   3. Google Street View    — the street the property is on
-//      (needs GOOGLE_MAPS_KEY in config.js — without it this rung is skipped)
-// Nothing found → resolves null; the card shows a neutral tier icon, no imagery.
+//   2. Wikimedia Commons     — nearest geotagged real photo within ~250m
+//   3. Google Street View    — the street the property is on (skipped
+//      automatically if the key/quota is unavailable — costs stay capped)
+//   4. Satellite crop        — last-resort backstop so no card is ever empty
+// Never generated/AI imagery.
 import { GOOGLE_MAPS_KEY } from './config.js'
 
 const cache = new Map()
@@ -57,8 +58,18 @@ async function commonsPhoto(poi) {
   return null
 }
 
-// Resolves a real photo URL, or null when nothing genuine exists.
-// Real photos of the place beat the street shot; satellite and AI art never appear.
+// Satellite crop of the property itself — deterministic, always available.
+// Only ever shown when no real photo and no street view exists.
+function aerialPhoto(poi) {
+  const z = 18
+  const latRad = (poi.lat * Math.PI) / 180
+  const n = 2 ** z
+  const x = Math.floor(((poi.lon + 180) / 360) * n)
+  const y = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n)
+  return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`
+}
+
+// Never resolves empty: real photo of the place > street view > satellite backstop.
 export function fetchPhoto(poi) {
   if (cache.has(poi.id)) return cache.get(poi.id)
   const promise = (async () => {
@@ -73,8 +84,8 @@ export function fetchPhoto(poi) {
     try {
       const sv = await streetViewPhoto(poi)
       if (sv) return sv
-    } catch { /* no photo */ }
-    return null
+    } catch { /* next source */ }
+    return aerialPhoto(poi)
   })()
   cache.set(poi.id, promise)
   return promise
