@@ -842,7 +842,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
 
       {sel && (
         <div className="card" key={sel.id}>
-          <div className="card-photo" style={photo ? { backgroundImage: `url(${photo})` } : undefined}>
+          <div className="card-photo" style={photo ? { backgroundImage: `url("${photo}")` } : undefined}>
             {!photo && <span className="card-photo-emoji">{selMeta.emoji}</span>}
             <button className="close" onClick={() => { sfx.click(); setSelectedId(null) }}>✕</button>
             <span className={'tier-chip tier-' + sel.tier}>{selMeta.label}</span>

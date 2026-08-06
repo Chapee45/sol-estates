@@ -25,7 +25,7 @@ async function wikiPhoto(poi) {
   const url =
     'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*' +
     '&generator=geosearch&ggscoord=' + poi.lat + '%7C' + poi.lon +
-    '&ggsradius=150&ggslimit=8&prop=pageimages&piprop=thumbnail&pithumbsize=640'
+    '&ggsradius=250&ggslimit=10&prop=pageimages&piprop=thumbnail&pithumbsize=640'
   const res = await fetch(url)
   const json = await res.json()
   const pages = Object.values(json.query?.pages || {}).filter(p => p.thumbnail)
@@ -44,7 +44,7 @@ async function commonsPhoto(poi) {
   const url =
     'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*' +
     '&generator=geosearch&ggscoord=' + poi.lat + '%7C' + poi.lon +
-    '&ggsradius=100&ggslimit=5&ggsnamespace=6' +
+    '&ggsradius=250&ggslimit=10&ggsnamespace=6' +
     '&prop=imageinfo&iiprop=url&iiurlwidth=640'
   const res = await fetch(url)
   const json = await res.json()
