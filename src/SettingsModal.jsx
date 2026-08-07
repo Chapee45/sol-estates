@@ -39,7 +39,27 @@ export function GameSettings({ settings, onToggle, onSet }) {
   )
 }
 
-export default function SettingsModal({ open, onClose, settings, onToggle, onSet, onLogout, onReset, player }) {
+// Studio-only creator tools — compiled in ONLY when the build sets
+// VITE_STUDIO (the hidden test deployment). Absent from the public bundle.
+function CreatorTools({ onDevSet }) {
+  const grab = (id) => parseFloat(document.getElementById(id)?.value)
+  return (
+    <div className="creator-tools">
+      <div className="hc-title">🎬 Creator Tools</div>
+      <div className="ct-row">
+        <input id="ct-cash" type="number" placeholder="Cash" />
+        <input id="ct-est" type="number" placeholder="ESTATE" />
+        <input id="ct-lvl" type="number" placeholder="Level" min="1" max="30" />
+      </div>
+      <div className="ct-row">
+        <button className="mini-btn" onClick={() => { sfx.click(); onDevSet({ cash: grab('ct-cash'), block: grab('ct-est'), level: grab('ct-lvl') }) }}>Apply</button>
+        <button className="mini-btn" onClick={() => { sfx.buy(); onDevSet({ cash: 999999999, block: 999999999 }) }}>💰 Max balances</button>
+      </div>
+    </div>
+  )
+}
+
+export default function SettingsModal({ open, onClose, settings, onToggle, onSet, onLogout, onReset, player, onDevSet }) {
   if (!open) return null
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -48,6 +68,7 @@ export default function SettingsModal({ open, onClose, settings, onToggle, onSet
           <h3>Settings</h3>
           <button className="close-flat" onClick={() => { sfx.close(); onClose() }}>✕</button>
         </div>
+        {import.meta.env.VITE_STUDIO && onDevSet && <CreatorTools onDevSet={onDevSet} />}
         <GameSettings settings={settings} onToggle={onToggle} onSet={onSet} />
         <div className="setting-row">
           <span>{player.mode === 'phantom' ? 'Wallet connected' : 'Developer session'}</span>

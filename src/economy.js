@@ -5,7 +5,7 @@
 // All prices are deterministic from the OSM id — every player sees the same numbers.
 
 export const START_CASH = 25000
-export const START_BLOCK = 50
+export const START_BLOCK = 120
 
 // Pricing peg used for property price tags: 1 $BLOCK = 100 CASH
 export const CASH_PER_BLOCK = 100
@@ -52,9 +52,11 @@ function prand(id) {
 }
 
 // ---------- Rarity ----------
-// Currency glyphs used across the UI (no emoji — typographic marks)
-export const CASH_SYM = '$'
-export const BLOCK_SYM = '◈'
+// Currency display: CASH wears the money emoji; $ESTATE is spelled out as a
+// word after the amount ("1,000 ESTATE") — no icon, per Luca's ruling.
+export const CASH_SYM = '💵'
+export const BLOCK_SYM = '◈' // legacy glyph — display code should prefer fmtE/fmtEB
+export const EST_WORD = 'ESTATE'
 
 export const RARITIES = ['common', 'rare', 'epic', 'legendary']
 export const RARITY_META = {
@@ -104,9 +106,10 @@ export function blockPerHour(price, ups = 0) {
   return blockPriceFor(price) * 0.008 * BLOCK_YIELD_FACTOR * upMult(ups)
 }
 
-// Upgrades are $BLOCK-only
+// Upgrades and renovations are CASH — that's what the rent you collect is for.
+// (Utility remap 2026-08-06: ESTATE acquires property; CASH runs the business.)
 export function upgradeCost(price, upsIndex) {
-  return Math.max(1, Math.round(blockPriceFor(price) * UPGRADE_COST_MULT[upsIndex]))
+  return Math.max(50, Math.round((price * UPGRADE_COST_MULT[upsIndex]) / 50) * 50)
 }
 
 // Unmanaged properties stop accruing after 8h — appoint a manager to go
@@ -120,8 +123,9 @@ export const MANAGERS = {
 }
 
 export const managerBonus = (prop) => (prop?.manager ? (MANAGERS[prop.manager]?.bonus ?? 1.1) : 1)
+// Staff are paid in CASH
 export const managerCostFor = (price, key) =>
-  Math.max(3, Math.round(blockPriceFor(price) * (MANAGERS[key]?.costMult ?? 0.6)))
+  Math.max(300, Math.round((price * (MANAGERS[key]?.costMult ?? 0.6)) / 50) * 50)
 
 export function accrualHours(prop, now) {
   const h = (now - prop.lastCollect) / 3600000
@@ -137,7 +141,23 @@ export function pendingBlock(prop, now) {
 }
 
 export const fmt = (n) => Math.floor(n).toLocaleString('en-US')
-// $BLOCK amounts are small — show 2 decimals below 100
+// $ESTATE amounts are small — show 2 decimals below 100
 export const fmtB = (n) => n >= 100
   ? Math.floor(n).toLocaleString('en-US')
   : (Math.floor(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+// $ESTATE spelled out: "1,000 ESTATE" (whole) / "12.50 ESTATE" (decimal)
+export const fmtE = (n) => `${fmt(n)} ${EST_WORD}`
+export const fmtEB = (n) => `${fmtB(n)} ${EST_WORD}`
+
+// The token cost of a property at a given CASH value
+export const estatePriceFor = (cashValue) => blockPriceFor(cashValue)
+
+// Purchase tokenomics: 10% of every property purchase burns, 90% lands in the
+// master wallet that funds ESTATE payouts. Simulated client-side until the
+// on-chain backend takes over.
+export const BURN_RATE = 0.10
+export const splitPurchase = (estateCost) => {
+  const burned = Math.max(1, Math.round(estateCost * BURN_RATE))
+  return { burned, toTreasury: estateCost - burned }
+}

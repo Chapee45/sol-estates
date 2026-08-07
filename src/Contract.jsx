@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { TIER_META, RARITY_META, blockPriceFor, fmt, CASH_SYM, BLOCK_SYM } from './economy.js'
+import { TIER_META, RARITY_META, estatePriceFor, fmt, fmtE } from './economy.js'
 import { sfx, initScribble } from './sound.js'
 import pencilSfx from './assets/pencil.mp3'
 
@@ -86,13 +86,11 @@ export default function Contract({ contract, playerName, signature, onComplete, 
   useEffect(() => { setDrawn(null); setAffixed(false); setPadKey(k => k + 1) }, [contract])
 
   if (!contract) return null
-  const { poi, currency, ask } = contract
+  const { poi, ask } = contract
   const agreed = ask ?? poi.price
   const meta = TIER_META[poi.tier] || TIER_META.shop
   const rar = RARITY_META[poi.rarity || 'common']
-  const priceStr = currency === 'cash'
-    ? `${CASH_SYM}${fmt(agreed)}`
-    : `${BLOCK_SYM}${fmt(blockPriceFor(agreed))} $ESTATE`
+  const priceStr = fmtE(estatePriceFor(agreed))
   const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   const signed = !!drawn || affixed
   const sigImage = drawn || (affixed ? signature : null)

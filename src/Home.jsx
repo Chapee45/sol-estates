@@ -8,7 +8,8 @@ import bgNight from './assets/home-bg-night.webp'
 import bgNightMobile from './assets/home-bg-night-mobile.webp'
 import { sfx, applyAudioSettings } from './sound.js'
 import { GameSettings } from './SettingsModal.jsx'
-import { fmtB, fmt, BLOCK_SYM, CASH_SYM, cashPerHour, managerBonus } from './economy.js'
+import { fmtB, fmt, fmtE, fmtEB, CASH_SYM, cashPerHour, managerBonus, effectivePrice, estatePriceFor } from './economy.js'
+import { worldListings, newsFeed } from './market.js'
 import { shortAddr } from './wallet.js'
 import { levelFromXp, rankForLevel } from './state.js'
 
@@ -207,39 +208,90 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
       <img className="cloud cloud-c" src={cloud1} alt="" />
 
       <div className="home-hud">
-        <span className="hud-chip">{CASH_SYM}{fmt(save.cash ?? 0)}</span>
-        <span className="hud-chip sol">{BLOCK_SYM}{fmtB(estate)}</span>
+        <span className="hud-chip">{CASH_SYM} {fmt(save.cash ?? 0)}</span>
+        <span className="hud-chip sol">{fmtEB(estate)}</span>
       </div>
 
-      <div className="home-inner menu">
-        <img className="home-wordmark" src={logo} alt="Sol Estates" fetchpriority="high" />
-
-        <button className="play-btn" onClick={handlePlay}>▶ &nbsp;PLAY</button>
-
-        <div className="menu-row">
-          <button className="menu-sq" onClick={() => open('token')}>
-            <span className="menu-ic sol-grad">{BLOCK_SYM}</span><span>$ESTATE</span>
-          </button>
-          <button className="menu-sq" onClick={() => open('wallet')}>
-            <span className="menu-ic">👛</span><span>Wallet</span>
-          </button>
-          <button className="menu-sq" onClick={() => open('leaders')}>
-            <span className="menu-ic">🏆</span><span>Leaders</span>
-          </button>
-          <button className="menu-sq" onClick={() => open('account')}>
-            <span className="menu-ic">
+      <div className="home-grid">
+        {/* left rail: who you are + your wallet */}
+        <aside className="home-rail left-rail">
+          <div className="home-card id-card">
+            <div className="idc-top">
               {player?.pfp?.type === 'image'
-                ? <img className="menu-pfp" src={player.pfp.value} alt="" />
-                : (player?.pfp?.value || '👤')}
-            </span>
-            <span>Account</span>
+                ? <img className="idc-pfp" src={player.pfp.value} alt="" />
+                : <span className="idc-pfp emoji">{player?.pfp?.value || '👤'}</span>}
+              <div className="idc-meta">
+                <b>{player?.name || 'New Landlord'}</b>
+                <small>Lv {level} · {rankForLevel(level)}</small>
+              </div>
+            </div>
+            <button className="card-btn" onClick={() => open(player?.name ? 'account' : 'profile')}>
+              {player?.name ? 'View account' : 'Create profile'}
+            </button>
+          </div>
+
+          <div className="home-card wallet-card">
+            <div className="hc-title">👛 Wallet</div>
+            {connected ? (
+              <>
+                <div className="wc-addr">{shortAddr(player.address)}</div>
+                <div className="wc-balances">
+                  <div className="wc-row"><small>CASH</small><b>{CASH_SYM} {fmt(save.cash ?? 0)}</b></div>
+                  <div className="wc-row"><small>$ESTATE</small><b>{fmtEB(estate)}</b></div>
+                </div>
+                <button className="card-btn" onClick={() => open('token')}>Token &amp; master wallet</button>
+              </>
+            ) : (
+              <>
+                <p className="wc-note">Connect Phantom to secure your empire and receive $ESTATE.</p>
+                <button className="card-btn gold" onClick={() => { sfx.click(); onConnectWallet() }} disabled={connecting}>
+                  {connecting ? 'Connecting…' : 'Connect Phantom'}
+                </button>
+              </>
+            )}
+          </div>
+
+          <button className="home-card link-card" onClick={() => open('leaders')}>
+            <span className="hc-title">🏆 Leaderboard</span>
+            <small>revenue standings</small>
           </button>
-          <button className="menu-sq" onClick={() => open('settings')}>
+        </aside>
+
+        {/* center: logo + PLAY */}
+        <div className="home-center">
+          <img className="home-wordmark" src={logo} alt="Sol Estates" fetchpriority="high" />
+          <button className="play-btn" onClick={handlePlay}>▶ &nbsp;PLAY</button>
+          <button className="menu-sq lone-settings" onClick={() => open('settings')}>
             <span className="menu-ic">⚙️</span><span>Settings</span>
           </button>
+          {error && <p className="home-err">{error}</p>}
         </div>
 
-        {error && <p className="home-err">{error}</p>}
+        {/* right rail: the market, alive */}
+        <aside className="home-rail right-rail">
+          <div className="home-card listings-card">
+            <div className="hc-title">🌍 Trending listings</div>
+            {worldListings(effectivePrice, Date.now(), 4).map(l => (
+              <div key={l.id} className="tl-row">
+                <div className="tl-name">
+                  <b>{l.name}</b>
+                  <small>{l.seller}{l.deal > 3 ? <span className="deal-tag"> ▼{l.deal}%</span> : l.deal < -3 ? <span className="premium-tag"> ▲{-l.deal}%</span> : null}</small>
+                </div>
+                <span className="tl-price">{fmtE(estatePriceFor(l.ask))}</span>
+              </div>
+            ))}
+            <button className="card-btn" onClick={handlePlay}>Open marketplace in game</button>
+          </div>
+        </aside>
+      </div>
+
+      {/* rolling news ticker */}
+      <div className="home-ticker">
+        <div className="ticker-track">
+          {[...newsFeed(Date.now(), 6), ...newsFeed(Date.now(), 6)].map((n, i) => (
+            <span key={n.id + '-' + i} className="ticker-item"><b>{n.outlet}:</b> {n.headline}</span>
+          ))}
+        </div>
       </div>
 
       {/* -------- profile setup (first PLAY) -------- */}
@@ -318,19 +370,21 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
         <div className="modal-backdrop" onClick={close}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-head">
-              <h3><span className="sol-grad">{BLOCK_SYM}</span> $ESTATE</h3>
+              <h3><span className="sol-grad">$ESTATE</span></h3>
               <button className="close-flat" onClick={close}>✕</button>
             </div>
             <p className="market-note">
-              <b>$ESTATE</b> is the property-yield token of Sol Estates, on Solana.
-              Every property you own earns it around the clock — the rarer the
-              property, the richer the yield. Spend it on upgrades, permits and
-              auctions, or hold it in your wallet.
+              <b>$ESTATE</b> is the token every property in Sol Estates is bought
+              with. 10% of every purchase is burned forever; the rest goes to the
+              master wallet that pays players. Earn your Earning License at
+              Level 4 and your properties start paying you $ESTATE around the clock.
             </p>
             <div className="empire-stats">
               <div><label>Network</label><b>Solana</b></div>
               <div><label>Status</label><b>Pre-launch</b></div>
-              <div><label>Your balance</label><b>{BLOCK_SYM}{fmtB(estate)}</b></div>
+              <div><label>Your balance</label><b>{fmtEB(estate)}</b></div>
+              <div><label>Master wallet</label><b>{fmtE(save.treasury ?? 0)}</b></div>
+              <div><label>Burned forever</label><b>{fmtE(save.burned ?? 0)}</b></div>
             </div>
             <button className="primary" disabled>Buy $ESTATE — at token launch</button>
           </div>
@@ -349,7 +403,7 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
               <>
                 <div className="empire-stats">
                   <div><label>Connected</label><b>{shortAddr(player.address)}</b></div>
-                  <div><label>$ESTATE earned</label><b>{BLOCK_SYM}{fmtB(estate)}</b></div>
+                  <div><label>$ESTATE earned</label><b>{fmtEB(estate)}</b></div>
                 </div>
                 <p className="market-note">
                   Your properties keep earning $ESTATE while you play. On-chain
@@ -435,7 +489,7 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
                 </div>
                 <div className="empire-stats">
                   <div><label>Revenue</label><b>{CASH_SYM}{fmt(myRevenue)}/hr</b></div>
-                  <div><label>$ESTATE</label><b>{BLOCK_SYM}{fmtB(estate)}</b></div>
+                  <div><label>$ESTATE</label><b>{fmtEB(estate)}</b></div>
                   <div><label>Wallet</label><b>{connected ? shortAddr(player.address) : 'Not linked'}</b></div>
                 </div>
                 {!connected && (

@@ -1,4 +1,4 @@
-import { TIER_META, RARITY_META, RARITIES, fmt, CASH_SYM } from './economy.js'
+import { TIER_META, RARITY_META, RARITIES, fmt, fmtE, estatePriceFor } from './economy.js'
 import { sfx } from './sound.js'
 
 const SORTS = [
@@ -41,7 +41,7 @@ export default function NearbyPanel({ open, items, sort, setSort, onSelect, onCl
                 <small><span style={{ color: rar.color }}>{rar.label}</span> · {meta.label} · {fmtDist(p.dist)}</small>
               </span>
             </span>
-            <span className="nearby-price">{CASH_SYM}{fmt(p.price)}</span>
+            <span className="nearby-price">{fmtE(estatePriceFor(p.price))}</span>
           </button>
         )
       })}

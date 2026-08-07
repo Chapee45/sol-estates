@@ -1,4 +1,4 @@
-import { TIER_META, RARITY_META, fmt, CASH_SYM, BLOCK_SYM } from './economy.js'
+import { TIER_META, RARITY_META, fmt, fmtE, estatePriceFor, CASH_SYM } from './economy.js'
 import { rivalBid, minRaise, fmtCountdown, MARKETPLACE_LEVEL } from './state.js'
 import { sellQuote, marketPrice } from './market.js'
 import { sfx } from './sound.js'
@@ -56,11 +56,11 @@ export default function Marketplace({
                       </button>
                       <div className="auction-side">
                         <div className="auction-bidline">
-                          <b>{CASH_SYM}{fmt(l.ask)}</b>
-                          <small>market {CASH_SYM}{fmt(l.live)}</small>
+                          <b>{fmtE(estatePriceFor(l.ask))}</b>
+                          <small>market {fmtE(estatePriceFor(l.live))}</small>
                         </div>
                         <div className="auction-actions">
-                          <button className="bid-btn" disabled={ownedAlready || cash < l.ask} onClick={() => onBuyListing(l)}>
+                          <button className="bid-btn" disabled={ownedAlready || block < estatePriceFor(l.ask)} onClick={() => onBuyListing(l)}>
                             {ownedAlready ? 'Owned' : 'Buy'}
                           </button>
                         </div>
@@ -73,7 +73,7 @@ export default function Marketplace({
 
             {tab === 'auctions' && (
               <div className="market-list">
-                <p className="market-note">Notable properties from your travels go under the hammer every hour. Outbid rivals with ◈ $ESTATE. <span className="muted">(Rival bids are simulated until multiplayer goes live.)</span></p>
+                <p className="market-note">Notable properties from your travels go under the hammer every hour. Outbid rivals with ESTATE. <span className="muted">(Rival bids are simulated until multiplayer goes live.)</span></p>
                 {auctions.length === 0 && <p className="muted">Explore the map to discover properties — auctions pull from places you've seen.</p>}
                 {auctions.map(a => {
                   const mine = myBids[a.key]
@@ -89,18 +89,18 @@ export default function Marketplace({
                         <span className="auction-emoji">{meta.emoji}</span>
                         <span className="auction-text">
                           <b>{a.poi.name}</b>
-                          <small><span style={{ color: rar.color }}>{rar.label}</span> · {meta.label} · valued ~◈{fmt(a.value)}</small>
+                          <small><span style={{ color: rar.color }}>{rar.label}</span> · {meta.label} · valued ~{fmtE(a.value)}</small>
                         </span>
                       </button>
                       <div className="auction-side">
                         <div className="auction-bidline">
-                          <b className={leading ? 'lead' : 'outbid'}>◈{fmt(top)}</b>
+                          <b className={leading ? 'lead' : 'outbid'}>{fmtE(top)}</b>
                           <small>{leading ? 'Leading' : mine ? 'Outbid' : 'Top bid'}</small>
                         </div>
                         <div className="auction-actions">
                           <span className="countdown">{fmtCountdown(a.endsAt - now)}</span>
                           <button className="bid-btn" disabled={block < raise} onClick={() => onBid(a, raise)}>
-                            Bid ◈{fmt(raise)}
+                            Bid {fmtE(raise)}
                           </button>
                         </div>
                       </div>
@@ -112,7 +112,7 @@ export default function Marketplace({
 
             {tab === 'sell' && (
               <div className="market-list">
-                <p className="market-note">The registry buys instantly at <b>85% of live market value</b>, paid in {CASH_SYM} CASH — a permit comes free. Listing to other players at full price arrives with multiplayer.</p>
+                <p className="market-note">The registry buys instantly at <b>85% of live market value</b>, paid in ESTATE — a permit comes free. Listing to other players at full price arrives with multiplayer.</p>
                 {ownedList.length === 0 && <p className="muted">You don't own anything yet.</p>}
                 {ownedList.map(p => {
                   const meta = TIER_META[p.tier] || TIER_META.shop
@@ -127,14 +127,14 @@ export default function Marketplace({
                         <span className="auction-text">
                           <b>{p.name}</b>
                           <small>
-                            market {CASH_SYM}{fmt(live)} ·{' '}
+                            market {fmtE(estatePriceFor(live))} ·{' '}
                             <span style={{ color: pl >= 0 ? 'var(--green)' : 'var(--red)' }}>{pl >= 0 ? '▲' : '▼'}{Math.abs(pl)}% vs paid</span>
                             {' '}· {p.ups} improvements
                           </small>
                         </span>
                       </button>
                       <div className="auction-side">
-                        <button className="sell-btn" onClick={() => onInstantSell(p)}>Sell {CASH_SYM}{fmt(quote)}</button>
+                        <button className="sell-btn" onClick={() => onInstantSell(p)}>Sell {fmtE(estatePriceFor(quote))}</button>
                       </div>
                     </div>
                   )

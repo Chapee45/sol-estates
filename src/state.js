@@ -12,7 +12,7 @@ export function levelFromXp(xp) {
 
 // XP awards
 export const xpForBuy = (cashPrice) => Math.round(cashPrice / 50)
-export const xpForUpgrade = (blockCost) => blockCost * 5
+export const xpForUpgrade = (cashCost) => Math.round(cashCost / 20)
 export const xpForCollect = (cashAmt, blockAmt) => Math.round(cashAmt / 500 + blockAmt * 2)
 export const XP_AUCTION_WIN = 200
 
@@ -22,11 +22,15 @@ export const TIER_UNLOCK = {
   bank: 4, hotel: 5, mall: 6, landmark: 8,
 }
 
+// ESTATE earning unlocks here — before this, properties pay CASH only.
+// The grind gate: buy with ESTATE, build rent flow, unlock the license.
+export const EARN_LEVEL = 4
+
 // Named perk per level, shown on level-up + in the Empire panel
 export const LEVEL_PERKS = {
   2:  'Supermarkets unlocked · +1 permit',
   3:  'Entertainment unlocked · Marketplace access · +1 permit',
-  4:  'Banks & casinos unlocked · +1 permit',
+  4:  '📜 EARNING LICENSE — properties now earn ESTATE · Banks unlocked · +1 permit',
   5:  'Hotels unlocked · Managers for hire · +1 permit',
   6:  'Shopping malls unlocked · +1 permit',
   7:  '+1 permit',

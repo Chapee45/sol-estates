@@ -1,4 +1,4 @@
-import { MANAGERS, managerCostFor, fmt, BLOCK_SYM } from './economy.js'
+import { MANAGERS, managerCostFor, fmt, CASH_SYM } from './economy.js'
 import { CHAR_ART } from './characters.js'
 import { sfx } from './sound.js'
 
@@ -28,7 +28,7 @@ export default function StaffModal({ propId, prop, block, onHire, onClose }) {
                   <span className="staff-bonus">+{Math.round((m.bonus - 1) * 100)}% yield · auto-collect</span>
                 </div>
                 <button className="bid-btn" disabled={block < cost} onClick={() => onHire(propId, key)}>
-                  {BLOCK_SYM}{fmt(cost)}
+                  {CASH_SYM}{fmt(cost)}
                 </button>
               </div>
             )

@@ -19,12 +19,13 @@ import { sfx, applyAudioSettings, initMusic, initAmbience, kickMusic } from './s
 import {
   TIER_META, UPGRADES, UPGRADE_RENT_MULT, MAX_UPS, RARITY_META, rarityOf,
   START_CASH, START_BLOCK,
-  effectivePrice, blockPriceFor, cashPerHour, blockPerHour, upgradeCost,
+  effectivePrice, blockPriceFor, estatePriceFor, splitPurchase, cashPerHour, blockPerHour, upgradeCost,
+  fmtE, fmtEB,
   pendingCash, pendingBlock, MANAGERS, managerBonus, managerCostFor, UNMANAGED_CAP_HOURS,
   accrualHours, fmt, fmtB, CASH_SYM, BLOCK_SYM,
 } from './economy.js'
 import {
-  levelFromXp, cumXp, TIER_UNLOCK, LEVEL_PERKS, MARKETPLACE_LEVEL, MANAGERS_LEVEL,
+  levelFromXp, cumXp, TIER_UNLOCK, LEVEL_PERKS, MARKETPLACE_LEVEL, MANAGERS_LEVEL, EARN_LEVEL,
   permitSlots, permitCost, xpForBuy, xpForUpgrade, xpForCollect, XP_AUCTION_WIN,
   currentAuctions, rivalBid, finalRivalBid, rankForLevel,
 } from './state.js'
@@ -46,6 +47,8 @@ function loadSave() {
     s.extraPermits = s.extraPermits ?? 0
     s.bids = s.bids ?? {}
     s.signature = s.signature ?? null
+    s.burned = s.burned ?? 0
+    s.treasury = s.treasury ?? 0
     s.settings = { music: true, sfx: true, ambience: true, musicVol: 0.5, sfxVol: 0.6, ambVol: 0.5, night: false, ...(s.settings || {}) }
     for (const p of Object.values(s.owned || {})) {
       if (p.ups == null) p.ups = Math.max(0, (p.level || 1) - 1)
@@ -75,7 +78,7 @@ function ValueChart({ poi, now, paid }) {
     <div className="value-chart">
       <div className="vc-head">
         <span className="vc-label">Market value</span>
-        <b className="vc-now">{CASH_SYM}{fmt(pts[pts.length - 1])}</b>
+        <b className="vc-now">{fmtE(estatePriceFor(pts[pts.length - 1]))}</b>
         <span className="vc-delta" style={{ color: col }}>{up ? '▲' : '▼'} {Math.abs(delta)}% <small>7d</small></span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
@@ -88,7 +91,7 @@ function ValueChart({ poi, now, paid }) {
       </svg>
       {paid != null && (
         <div className="vc-paid">
-          You paid {CASH_SYM}{fmt(paid)} · {pts[pts.length - 1] >= paid
+          You paid {fmtE(estatePriceFor(paid))} · {pts[pts.length - 1] >= paid
             ? <span style={{ color: 'var(--green)' }}>up {Math.round(((pts[pts.length - 1] - paid) / paid) * 100)}%</span>
             : <span style={{ color: 'var(--red)' }}>down {Math.round(((paid - pts[pts.length - 1]) / paid) * 100)}%</span>}
         </div>
@@ -107,6 +110,10 @@ export default function Game({ player, onLogout, onTutorialDone }) {
   const [cash, setCash] = useState(save.cash)
   const [block, setBlock] = useState(save.block)
   const [xp, setXp] = useState(save.xp)
+  // Simulated tokenomics ledger: 10% of every ESTATE purchase burns, the rest
+  // accrues to the master wallet that funds payouts (on-chain post-backend)
+  const [burned, setBurned] = useState(save.burned)
+  const [treasury, setTreasury] = useState(save.treasury)
   const [extraPermits, setExtraPermits] = useState(save.extraPermits)
   const [bids, setBids] = useState(save.bids)
   const [settings, setSettings] = useState(save.settings)
@@ -210,8 +217,8 @@ export default function Game({ player, onLogout, onTutorialDone }) {
   useEffect(() => {
     ownedRef.current = owned
     refreshSource()
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ cash, block, xp, extraPermits, bids, settings, signature, owned }))
-  }, [owned, cash, block, xp, extraPermits, bids, settings, signature])
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ cash, block, xp, extraPermits, bids, settings, signature, owned, burned, treasury }))
+  }, [owned, cash, block, xp, extraPermits, bids, settings, signature, burned, treasury])
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
@@ -256,7 +263,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     }
     const first = autoCollect()
     if (first && (first.c > 50 || first.b > 0.5)) {
-      toast(`Your managers collected $${fmt(first.c)} · ◈${fmtB(first.b)} while you were away`, '✦')
+      toast(`Your managers collected ${CASH_SYM}${fmt(first.c)}${first.b > 0 ? ' · ' + fmtEB(first.b) : ''} while you were away`, '✦')
     }
     const iv = setInterval(autoCollect, 20000)
     return () => clearInterval(iv)
@@ -284,12 +291,12 @@ export default function Game({ player, onLogout, onTutorialDone }) {
               },
             }))
             gainXp(XP_AUCTION_WIN)
-            toast(`Auction won — ${bid.poi.name} for ◈${fmt(bid.amount)}`, '✦')
+            toast(`Auction won — ${bid.poi.name} for ${fmtE(bid.amount)}`, '✦')
             sfx.win()
             showPopup('mike', CHAR_LINES.auctionWin)
           } else {
             setBlock(b => b + bid.amount) // refund escrow
-            toast(`Outbid on ${bid.poi.name} — ◈${fmt(bid.amount)} refunded`, '·')
+            toast(`Outbid on ${bid.poi.name} — ${fmtE(bid.amount)} refunded`, '·')
             showPopup('mike', CHAR_LINES.outbid)
           }
           delete next[key]
@@ -572,7 +579,8 @@ export default function Game({ player, onLogout, onTutorialDone }) {
   }, [])
 
   const totalPendingCash = ownedList.reduce((s, p) => s + pendingCash(p, now), 0)
-  const totalPendingBlock = ownedList.reduce((s, p) => s + pendingBlock(p, now), 0)
+  const earnUnlocked = level >= EARN_LEVEL
+  const totalPendingBlock = earnUnlocked ? ownedList.reduce((s, p) => s + pendingBlock(p, now), 0) : 0
   const totalCashRate = ownedList.reduce((s, p) => s + cashPerHour(p.price, p.ups) * managerBonus(p), 0)
   const totalBlockRate = ownedList.reduce((s, p) => s + blockPerHour(p.price, p.ups) * managerBonus(p), 0)
   const canCollect = totalPendingCash >= 1 || totalPendingBlock >= 0.01
@@ -590,7 +598,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
       if (cancelled) return
       const cands = [...poisRef.current.values()]
         .filter(p => !ownedRef.current[p.id]
-          && marketPrice(p) <= cash
+          && estatePriceFor(marketPrice(p)) <= block
           && levelFromXp(xp) >= (TIER_UNLOCK[p.tier] || 1))
         .sort((a, b) => marketPrice(a) - marketPrice(b))
       if (cands.length) {
@@ -650,27 +658,24 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     if (level < unlockAt) { sfx.error(); toast(`${TIER_META[poi.tier].label}s unlock at Level ${unlockAt}`, '·'); return }
     if (ownedList.length >= slots) { sfx.error(); toast('No permits available — level up or acquire one in your Portfolio', '·'); return }
     const mkt = marketPrice(poi)
-    if (currency === 'cash' && cash < mkt) return
-    if (currency === 'block' && block < blockPriceFor(mkt)) return
+    if (block < estatePriceFor(mkt)) return
     sfx.open()
-    setContract({ poi, currency, ask: mkt })
+    setContract({ poi, currency: 'block', ask: mkt })
   }
 
   function completeBuy(sigDataUrl) {
     if (!contract) return
-    const { poi, currency, ask } = contract
+    const { poi, ask } = contract
     const paid = ask ?? marketPrice(poi)
     setContract(null)
     if (sigDataUrl && sigDataUrl !== signature) setSignature(sigDataUrl)
     if (owned[poi.id]) return
-    if (currency === 'cash') {
-      if (cash < paid) return
-      setCash(c => c - paid)
-    } else {
-      const bPrice = blockPriceFor(paid)
-      if (block < bPrice) return
-      setBlock(b => b - bPrice)
-    }
+    const estCost = estatePriceFor(paid)
+    if (block < estCost) return
+    setBlock(b => b - estCost)
+    const { burned: burnAmt, toTreasury } = splitPurchase(estCost)
+    setBurned(v => v + burnAmt)
+    setTreasury(v => v + toTreasury)
     sfx.buy()
     gainXp(xpForBuy(paid))
     toast(`Deed recorded: ${poi.name} · +${fmt(xpForBuy(paid))} XP`, '✦')
@@ -689,9 +694,13 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     if (owned[l.id]) return
     if (level < (TIER_UNLOCK[l.tier] || 1)) { sfx.error(); toast(`${TIER_META[l.tier].label} properties unlock at Level ${TIER_UNLOCK[l.tier]}`, '·'); return }
     if (ownedList.length >= slots) { sfx.error(); toast('No permits available for this purchase', '·'); return }
-    if (cash < l.ask) { sfx.error(); return }
+    const estAsk = estatePriceFor(l.ask)
+    if (block < estAsk) { sfx.error(); return }
     sfx.buy()
-    setCash(c => c - l.ask)
+    setBlock(b => b - estAsk)
+    const { burned: burnAmt, toTreasury } = splitPurchase(estAsk)
+    setBurned(v => v + burnAmt)
+    setTreasury(v => v + toTreasury)
     gainXp(xpForBuy(l.ask))
     const rec = {
       id: l.id, name: l.name, tier: l.tier, rarity: l.rarity, lat: l.lat, lon: l.lon,
@@ -706,9 +715,9 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     const p = owned[id]
     if (!p || p.ups >= MAX_UPS) return
     const cost = upgradeCost(p.price, p.ups)
-    if (block < cost) return
+    if (cash < cost) return
     sfx.upgrade()
-    setBlock(b => b - cost)
+    setCash(c => c - cost)
     gainXp(xpForUpgrade(cost))
     setOwned(prev => ({ ...prev, [id]: { ...prev[id], ups: prev[id].ups + 1 } }))
   }
@@ -723,9 +732,9 @@ export default function Game({ player, onLogout, onTutorialDone }) {
     const p = owned[id]
     if (!p || p.manager) return
     const cost = managerCostFor(p.price, key)
-    if (block < cost) { sfx.error(); return }
+    if (cash < cost) { sfx.error(); return }
     sfx.hire()
-    setBlock(b => b - cost)
+    setCash(c => c - cost)
     setStaffFor(null)
     setOwned(prev => ({ ...prev, [id]: { ...prev[id], manager: key } }))
     toast(`${MANAGERS[key].name} appointed at ${p.name}`, '✦')
@@ -767,14 +776,16 @@ export default function Game({ player, onLogout, onTutorialDone }) {
         ceiling: auction.ceiling, startBid: auction.startBid, settled: false,
       },
     }))
-    toast(`Bid placed — ◈${fmt(amount)} on ${auction.poi.name}`, '·')
+    toast(`Bid placed — ${fmtE(amount)} on ${auction.poi.name}`, '·')
   }
 
-  // Sell back to the game at 85% of live market value, paid in CASH
+  // Sell back to the registry at 85% of live market value, paid in ESTATE
+  // from the master wallet (simulated until on-chain)
   function instantSell(p) {
-    const quote = sellQuote(p)
+    const quote = estatePriceFor(sellQuote(p))
     sfx.sell()
-    setCash(c => c + quote)
+    setBlock(b => b + quote)
+    setTreasury(v => Math.max(0, v - quote))
     setSellArmed(false)
     setSelectedId(sid => (sid === p.id ? null : sid))
     setOwned(prev => {
@@ -782,9 +793,9 @@ export default function Game({ player, onLogout, onTutorialDone }) {
       delete next[p.id]
       return next
     })
-    const paid = p.paid ?? p.price
-    const pl = quote - paid
-    toast(`Sold ${p.name} for ${CASH_SYM}${fmt(quote)} (${pl >= 0 ? '+' : '−'}${CASH_SYM}${fmt(Math.abs(pl))} on your buy)`, pl >= 0 ? '📈' : '📉')
+    const paidEst = estatePriceFor(p.paid ?? p.price)
+    const pl = quote - paidEst
+    toast(`Sold ${p.name} for ${fmtE(quote)} (${pl >= 0 ? '+' : '−'}${fmt(Math.abs(pl))} on your buy)`, pl >= 0 ? '📈' : '📉')
   }
 
   async function onSearch(e) {
@@ -897,10 +908,10 @@ export default function Game({ player, onLogout, onTutorialDone }) {
           </button>
           <span className="money-wrap" data-tut="money">
             <span className="chip money-chip"><i className="cur">{CASH_SYM}</i>{fmt(cash)}</span>
-            <span className="chip money-chip block-chip"><i className="cur brass">{BLOCK_SYM}</i>{fmtB(block)}</span>
+            <span className="chip money-chip block-chip">{fmtEB(block)}</span>
           </span>
           <button className="chip collect-chip" data-tut="collect" disabled={!canCollect} onClick={collectAll}>
-            Collect {CASH_SYM}{fmt(totalPendingCash)} · {BLOCK_SYM}{fmtB(totalPendingBlock)}
+            Collect {CASH_SYM}{fmt(totalPendingCash)}{earnUnlocked ? ` · ${fmtEB(totalPendingBlock)}` : ''}
           </button>
         </div>
         {menuOpen && (
@@ -933,7 +944,7 @@ export default function Game({ player, onLogout, onTutorialDone }) {
         )}
         {collectBurst && (
           <div className="collect-burst" key={collectBurst.id}>
-            +{CASH_SYM}{fmt(collectBurst.c)} · +{BLOCK_SYM}{fmtB(collectBurst.b)}
+            +{CASH_SYM}{fmt(collectBurst.c)}{collectBurst.b > 0 ? ` · +${fmtEB(collectBurst.b)}` : ''}
           </div>
         )}
       </header>
@@ -984,8 +995,8 @@ export default function Game({ player, onLogout, onTutorialDone }) {
             {selOwned ? (
               <>
                 <div className="stats">
-                  <div><label>Yield</label><b>{CASH_SYM}{fmt(cashPerHour(sel.price, sel.ups) * managerBonus(sel))} · {BLOCK_SYM}{fmtB(blockPerHour(sel.price, sel.ups) * managerBonus(sel))}<small>/hr</small></b></div>
-                  <div><label>Accrued</label><b className="gold">{CASH_SYM}{fmt(pendingCash(sel, now))} · {BLOCK_SYM}{fmtB(pendingBlock(sel, now))}</b></div>
+                  <div><label>Yield</label><b>{CASH_SYM}{fmt(cashPerHour(sel.price, sel.ups) * managerBonus(sel))}{earnUnlocked ? ` · ${fmtEB(blockPerHour(sel.price, sel.ups) * managerBonus(sel))}` : ''}<small>/hr</small></b></div>
+                  <div><label>Accrued</label><b className="gold">{CASH_SYM}{fmt(pendingCash(sel, now))}{earnUnlocked ? ` · ${fmtEB(pendingBlock(sel, now))}` : ''}</b></div>
                   <div><label>Improvements</label><b>{sel.ups}/{MAX_UPS}</b></div>
                 </div>
                 {selCapped && <div className="capped-warn">Yield halted — the 8-hour unmanaged cap was reached. Collect now, or appoint a manager.</div>}
@@ -1016,8 +1027,8 @@ export default function Game({ player, onLogout, onTutorialDone }) {
                         <span className="up-name">{name}</span>
                         <span className="up-boost">+{boost}% yield</span>
                         {next
-                          ? <button className="up-buy" disabled={block < cost} onClick={() => upgrade(sel.id)}>{BLOCK_SYM}{fmt(cost)}</button>
-                          : <span className="up-cost">{done ? 'Installed' : `${BLOCK_SYM}${fmt(cost)}`}</span>}
+                          ? <button className="up-buy" disabled={cash < cost} onClick={() => upgrade(sel.id)}>{CASH_SYM}{fmt(cost)}</button>
+                          : <span className="up-cost">{done ? 'Installed' : `${CASH_SYM}${fmt(cost)}`}</span>}
                       </div>
                     )
                   })}
@@ -1027,13 +1038,13 @@ export default function Game({ player, onLogout, onTutorialDone }) {
                   {sellArmed ? (
                     <>
                       <button className="sell-confirm" onClick={() => instantSell(sel)}>
-                        Confirm sale · {CASH_SYM}{fmt(sellQuote(sel, now))}
+                        Confirm sale · {fmtE(estatePriceFor(sellQuote(sel, now)))}
                       </button>
                       <button className="sell-cancel" onClick={() => { sfx.click(); setSellArmed(false) }}>Keep it</button>
                     </>
                   ) : (
                     <button className="sell-open" onClick={() => { sfx.click(); setSellArmed(true) }}>
-                      Sell to registry · {CASH_SYM}{fmt(sellQuote(sel, now))} <small>(85% of market)</small>
+                      Sell to registry · {fmtE(estatePriceFor(sellQuote(sel, now)))} <small>(85% of market)</small>
                     </button>
                   )}
                 </div>
@@ -1041,9 +1052,9 @@ export default function Game({ player, onLogout, onTutorialDone }) {
             ) : (
               <>
                 <div className="stats">
-                  <div><label>Market value</label><b>{CASH_SYM}{fmt(selMarket)}<small> or </small>{BLOCK_SYM}{fmt(selBlockPrice)}</b></div>
-                  <div><label>Yield</label><b>{CASH_SYM}{fmt(cashPerHour(sel.price, 0))} · {BLOCK_SYM}{fmtB(blockPerHour(sel.price, 0))}<small>/hr</small></b></div>
-                  <div><label>Max yield</label><b>{CASH_SYM}{fmt(cashPerHour(sel.price, MAX_UPS))} · {BLOCK_SYM}{fmtB(blockPerHour(sel.price, MAX_UPS))}<small>/hr</small></b></div>
+                  <div><label>Market value</label><b>{fmtE(selBlockPrice)}</b></div>
+                  <div><label>Yield</label><b>{CASH_SYM}{fmt(cashPerHour(sel.price, 0))}{earnUnlocked ? ` · ${fmtEB(blockPerHour(sel.price, 0))}` : ''}<small>/hr</small></b></div>
+                  <div><label>Max yield</label><b>{CASH_SYM}{fmt(cashPerHour(sel.price, MAX_UPS))}{earnUnlocked ? ` · ${fmtEB(blockPerHour(sel.price, MAX_UPS))}` : ''}<small>/hr</small></b></div>
                 </div>
                 <ValueChart poi={sel} now={now} />
                 {selLocked ? (
@@ -1053,15 +1064,12 @@ export default function Game({ player, onLogout, onTutorialDone }) {
                 ) : (
                   <div className="buy-row">
                     <button
-                      className={'primary' + (tutDef?.mode === 'buy' && starter && sel.id === starter.id ? ' tut-glow' : '')}
+                      className={'primary block-buy' + (tutDef?.mode === 'buy' && starter && sel.id === starter.id ? ' tut-glow' : '')}
                       data-tut="buy"
-                      disabled={cash < selMarket}
-                      onClick={() => buy(sel, 'cash')}
+                      disabled={block < selBlockPrice}
+                      onClick={() => buy(sel, 'block')}
                     >
-                      Acquire · {CASH_SYM}{fmt(selMarket)}
-                    </button>
-                    <button className="primary block-buy" disabled={block < selBlockPrice} onClick={() => buy(sel, 'block')}>
-                      {BLOCK_SYM}{fmt(selBlockPrice)}
+                      Acquire · {fmtE(selBlockPrice)}
                     </button>
                   </div>
                 )}
@@ -1097,16 +1105,16 @@ export default function Game({ player, onLogout, onTutorialDone }) {
           <div className="empire-stats">
             <div><label>Holdings</label><b>{ownedList.length}/{slots}</b></div>
             <div><label>{CASH_SYM} per hr</label><b>{fmt(totalCashRate)}</b></div>
-            <div><label>{BLOCK_SYM} per hr</label><b>{fmtB(totalBlockRate)}</b></div>
+            <div><label>ESTATE per hr</label><b>{earnUnlocked ? fmtB(totalBlockRate) : `unlocks Lv ${EARN_LEVEL}`}</b></div>
           </div>
           <button className="permit-btn" disabled={block < permitCost(extraPermits)} onClick={buyPermit}>
-            Acquire permit · {BLOCK_SYM}{fmt(permitCost(extraPermits))}
+            Acquire permit · {fmtE(permitCost(extraPermits))}
           </button>
           {ownedList.length === 0 && <p className="muted">No holdings yet. Select a property on the map to acquire it.</p>}
           {ownedList.map(p => (
             <button key={p.id} className="prop-row" onClick={() => { sfx.select(); flyTo(p) }}>
               <span>{(TIER_META[p.tier] || TIER_META.shop).emoji} {p.name}{p.manager ? ' · managed' : ''}</span>
-              <span className="muted">{p.ups}/{MAX_UPS} · {CASH_SYM}{fmt(cashPerHour(p.price, p.ups))} · {BLOCK_SYM}{fmtB(blockPerHour(p.price, p.ups))}</span>
+              <span className="muted">{p.ups}/{MAX_UPS} · {CASH_SYM}{fmt(cashPerHour(p.price, p.ups))}/hr</span>
             </button>
           ))}
         </div>
@@ -1140,6 +1148,12 @@ export default function Game({ player, onLogout, onTutorialDone }) {
         onLogout={onLogout}
         onReset={resetProgress}
         player={player}
+        onDevSet={({ cash: c, block: b, level: lv }) => {
+          if (Number.isFinite(c)) setCash(c)
+          if (Number.isFinite(b)) setBlock(b)
+          if (Number.isFinite(lv)) setXp(cumXp(Math.max(1, Math.min(30, lv))))
+          toast('Creator values applied', '🎬')
+        }}
       />
 
       {levelUpTo && (

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import avatar from './assets/mogul-mike.webp'
-import { fmt } from './economy.js'
 import { sfx } from './sound.js'
 
 // Placeholder character — name TBD per Luca
@@ -13,19 +12,19 @@ export const TUT_STEPS = [
   { mode: 'dialog', text: () => "Well, well — a new face! The name's Mogul Mike. Thirty years in property, three fortunes made, one questionable haircut. The registry sent me to show you the ropes." },
   { mode: 'dialog', text: () => "Welcome to SOL ESTATES. See this map? That's YOUR neighborhood — real streets, real buildings, live from the real world. And every bit of it is for sale." },
   { mode: 'dialog', target: '[data-tut="badge"]', text: () => "Every badge is a real place. The ring is its rarity — gray Common, blue Rare, violet Epic… gold LEGENDARY. Rarer = pricier = pays way more." },
-  { mode: 'dialog', target: '[data-tut="money"]', text: () => "Your two currencies: $ CASH builds the empire, ◈ $ESTATE is the real crypto token — straight to your wallet. Every property earns BOTH." },
+  { mode: 'dialog', target: '[data-tut="money"]', text: () => "Your two currencies: ESTATE is the real crypto token — it's what BUYS property. 💵 CASH is what your properties pay you — it runs the business: upgrades, renovations, staff." },
   { mode: 'dialog', text: () => "Enough talk. Rule #1 of real estate: your first deal should be CHEAP. Let me find you a bargain nobody owns yet… follow me!" },
   {
     mode: 'buy',
     target: '[data-tut="buy"]',
     text: (ctx) => ctx.starter
-      ? `THIS one — ${ctx.starter.name}. Just $${fmt(ctx.starter.price)}, and it's unowned. Underpriced, honest little earner, perfect first deal. Hit Acquire and put your signature on the deed!`
+      ? `THIS one — ${ctx.starter.name}. Unowned and underpriced — a perfect first deal. Hit Acquire, pay in ESTATE, and put your signature on the deed!`
       : 'Hold up… scanning the neighborhood for a bargain…',
   },
   { mode: 'dialog', target: '[data-tut="manager"]', text: () => "YESSS! 🎉 You're an owner — it's earning right now. But see this bar? No manager = rent STOPS after 8 hours. Managers (Level 5) collect forever, +10% yield." },
   { mode: 'dialog', target: '[data-tut="menu"]', text: () => "This menu is mission control: your Portfolio (permits — you can only HOLD so many properties, level up for more), the worldwide Marketplace, and the News wire." },
   { mode: 'dialog', target: '[data-tut="menu"]', text: () => "Watch the News wire in there. Markets boom and crash over hours — buy before the surge, sell before the slump. But careful… the press isn't always right." },
-  { mode: 'dialog', target: '[data-tut="collect"]', text: () => "And THIS is the money button. Rent piles up here — collect, reinvest, repeat. Build the biggest empire on the planet. Now get to work! 💼" },
+  { mode: 'dialog', target: '[data-tut="collect"]', text: () => "And THIS is the money button. Rent piles up here in CASH — collect it, upgrade your properties, climb the levels. At Level 4 you earn your EARNING LICENSE and properties start paying real ESTATE. Now get to work! 💼" },
 ]
 
 export default function Tutorial({ step, ctx, onNext, onSkip }) {
