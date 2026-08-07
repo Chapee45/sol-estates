@@ -4,7 +4,7 @@ import Game from './Game.jsx'
 import { connectPhantom, disconnectPhantom, handlePhantomReturn } from './wallet.js'
 import { sfx, kickMusic } from './sound.js'
 
-const PLAYER_KEY = 'blocklord-player-v1'
+import { PLAYER_KEY } from './saveKeys.js'
 
 function loadPlayer() {
   try { return JSON.parse(localStorage.getItem(PLAYER_KEY)) } catch { return null }

@@ -42,7 +42,12 @@ export function GameSettings({ settings, onToggle, onSet }) {
 // Studio-only creator tools — compiled in ONLY when the build sets
 // VITE_STUDIO (the hidden test deployment). Absent from the public bundle.
 function CreatorTools({ onDevSet }) {
-  const grab = (id) => parseFloat(document.getElementById(id)?.value)
+  const grab = (id) => {
+    const el = document.getElementById(id)
+    const v = parseFloat(el?.value)
+    if (el) el.value = ''
+    return v
+  }
   return (
     <div className="creator-tools">
       <div className="hc-title">🎬 Creator Tools</div>

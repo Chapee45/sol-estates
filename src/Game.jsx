@@ -32,8 +32,9 @@ import {
 import themeMusic from './assets/theme.mp3'
 import ambienceSfx from './assets/ambience.mp3'
 import logoArt from './assets/logo-text.webp'
+import { SAVE_KEY, CONTRACT_ADDRESS, CA_PLACEHOLDER } from './saveKeys.js'
 
-const SAVE_KEY = 'blocklord-save-v1'
+
 const MIN_POI_ZOOM = 11
 const MAX_STORE = 40000
 const EMPTY_FC = { type: 'FeatureCollection', features: [] }
@@ -929,6 +930,13 @@ export default function Game({ player, onLogout, onTutorialDone }) {
               </button>
               <button onClick={() => { sfx.click(); setMenuOpen(false); setShowNearby(true) }}>
                 <span>📍 Nearby</span><small>listings around you</small>
+              </button>
+              <button onClick={() => {
+                sfx.click(); setMenuOpen(false)
+                if (CONTRACT_ADDRESS) { navigator.clipboard?.writeText(CONTRACT_ADDRESS); toast('Contract address copied', '🔗') }
+                else toast('CA drops at launch — stay tuned', '🔗')
+              }}>
+                <span>🔗 CA</span><small>{CONTRACT_ADDRESS || CA_PLACEHOLDER}</small>
               </button>
               <button onClick={() => { sfx.click(); setMenuOpen(false); setShowSettings(true) }}>
                 <span className="menu-account">

@@ -12,6 +12,7 @@ import { fmtB, fmt, fmtE, fmtEB, CASH_SYM, cashPerHour, managerBonus, effectiveP
 import { worldListings, newsFeed } from './market.js'
 import { shortAddr } from './wallet.js'
 import { levelFromXp, rankForLevel } from './state.js'
+import { SAVE_KEY, CONTRACT_ADDRESS, CA_PLACEHOLDER } from './saveKeys.js'
 
 import av01 from './assets/pfp/av01.jpg'
 import av02 from './assets/pfp/av02.jpg'
@@ -41,7 +42,7 @@ const CHAR_PFPS = [
   { id: 'magnate', src: av12, label: 'Old Money Monty' },
 ]
 
-const SAVE_KEY = 'blocklord-save-v1'
+
 function readSave() {
   try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {} } catch { return {} }
 }
@@ -255,6 +256,18 @@ export default function Home({ player, onPlay, onCreateProfile, onConnectWallet,
             <span className="hc-title">🏆 Leaderboard</span>
             <small>revenue standings</small>
           </button>
+
+          <div className="home-card ca-card">
+            <span className="hc-title">🔗 CA</span>
+            <code className="ca-value">{CONTRACT_ADDRESS || CA_PLACEHOLDER}</code>
+            <button
+              className="card-btn"
+              disabled={!CONTRACT_ADDRESS}
+              onClick={() => { sfx.click(); if (CONTRACT_ADDRESS) navigator.clipboard?.writeText(CONTRACT_ADDRESS) }}
+            >
+              {CONTRACT_ADDRESS ? 'Copy address' : 'Announced at launch'}
+            </button>
+          </div>
         </aside>
 
         {/* center: logo + PLAY */}

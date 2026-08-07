@@ -894,6 +894,19 @@ button.chip:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1p
 .deal-tag { color: var(--green); font-weight: 800; }
 .premium-tag { color: var(--red); font-weight: 800; }
 
+/* CA card */
+.ca-value {
+  display: block;
+  font-family: monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--purple);
+  background: var(--card-2);
+  border-radius: 8px;
+  padding: 6px 8px;
+  word-break: break-all;
+}
+
 /* creator tools (studio builds only) */
 .creator-tools {
   background: var(--card-2);
