@@ -5,10 +5,14 @@
 // All prices are deterministic from the OSM id — every player sees the same numbers.
 
 export const START_CASH = 25000
-export const START_BLOCK = 120
+export const START_BLOCK = 500000
 
 // Pricing peg used for property price tags: 1 $BLOCK = 100 CASH
-export const CASH_PER_BLOCK = 100
+// Launch pricing against the 1,000,000,000-token supply: property prices read
+// like the real housing market. $1 of internal cash-value ≈ $100 ESTATE, so a
+// corner shop runs ~$250k ESTATE and a legendary landmark ~$30M ESTATE (~3% of
+// supply — whale territory), scaling smoothly with the live market engine.
+export const ESTATE_PER_CASH = 100
 
 // Global faucet throttle for the real token: $BLOCK accrues at this fraction
 // of the CASH pace (relative to its own price). THE knob for treasury safety.
@@ -88,7 +92,8 @@ export function effectivePrice(poi) {
 }
 
 // $BLOCK price of the same property
-export const blockPriceFor = (cashPrice) => Math.ceil(cashPrice / CASH_PER_BLOCK)
+export const blockPriceFor = (cashPrice) =>
+  Math.max(500, Math.round((cashPrice * ESTATE_PER_CASH) / 500) * 500)
 
 function upMult(ups) {
   let m = 1
@@ -146,9 +151,12 @@ export const fmtB = (n) => n >= 100
   ? Math.floor(n).toLocaleString('en-US')
   : (Math.floor(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-// $ESTATE spelled out: "$1,000 ESTATE" (whole) / "$12.50 ESTATE" (decimal)
-export const fmtE = (n) => `$${fmt(n)} ${EST_WORD}`
-export const fmtEB = (n) => `$${fmtB(n)} ${EST_WORD}`
+// $ESTATE spelled out: "$250,000 ESTATE", compacting past a million ("$2.5M ESTATE")
+const compactE = (n) => n >= 1e6
+  ? `${(n / 1e6).toLocaleString('en-US', { maximumFractionDigits: 2 })}M`
+  : fmt(n)
+export const fmtE = (n) => `$${compactE(n)} ${EST_WORD}`
+export const fmtEB = (n) => `$${n >= 100 ? compactE(n) : fmtB(n)} ${EST_WORD}`
 
 // The token cost of a property at a given CASH value
 export const estatePriceFor = (cashValue) => blockPriceFor(cashValue)

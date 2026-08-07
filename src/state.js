@@ -68,7 +68,7 @@ export function rankForLevel(level) {
 // ---------- Permits ----------
 // You can only hold so many properties: 3 base + 1 per level + purchased extras.
 export const permitSlots = (level, extraPermits) => 3 + level + (extraPermits || 0)
-export const permitCost = (bought) => Math.round(20 * Math.pow(bought + 1, 1.5)) // $BLOCK, escalating
+export const permitCost = (bought) => Math.round(20 * Math.pow(bought + 1, 1.5)) * 2500 // $ESTATE, escalating (~$50k first)
 
 // ---------- Auction house ----------
 // Client-side auction sim (deterministic per hour) — becomes real P2P with the backend.
