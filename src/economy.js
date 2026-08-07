@@ -52,9 +52,9 @@ function prand(id) {
 }
 
 // ---------- Rarity ----------
-// Currency display: CASH wears the money emoji; $ESTATE is spelled out as a
-// word after the amount ("1,000 ESTATE") — no icon, per Luca's ruling.
-export const CASH_SYM = '💵'
+// Currency display: both currencies wear the $ prefix; $ESTATE additionally
+// spells out the word after the amount ("$1,000 ESTATE") — no icon.
+export const CASH_SYM = '$'
 export const BLOCK_SYM = '◈' // legacy glyph — display code should prefer fmtE/fmtEB
 export const EST_WORD = 'ESTATE'
 
@@ -146,9 +146,9 @@ export const fmtB = (n) => n >= 100
   ? Math.floor(n).toLocaleString('en-US')
   : (Math.floor(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-// $ESTATE spelled out: "1,000 ESTATE" (whole) / "12.50 ESTATE" (decimal)
-export const fmtE = (n) => `${fmt(n)} ${EST_WORD}`
-export const fmtEB = (n) => `${fmtB(n)} ${EST_WORD}`
+// $ESTATE spelled out: "$1,000 ESTATE" (whole) / "$12.50 ESTATE" (decimal)
+export const fmtE = (n) => `$${fmt(n)} ${EST_WORD}`
+export const fmtEB = (n) => `$${fmtB(n)} ${EST_WORD}`
 
 // The token cost of a property at a given CASH value
 export const estatePriceFor = (cashValue) => blockPriceFor(cashValue)
