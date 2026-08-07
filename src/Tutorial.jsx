@@ -12,7 +12,7 @@ export const TUT_STEPS = [
   { mode: 'dialog', text: () => "Well, well — a new face! The name's Mogul Mike. Thirty years in property, three fortunes made, one questionable haircut. The registry sent me to show you the ropes." },
   { mode: 'dialog', text: () => "Welcome to SOL ESTATES. See this map? That's YOUR neighborhood — real streets, real buildings, live from the real world. And every bit of it is for sale." },
   { mode: 'dialog', target: '[data-tut="badge"]', text: () => "Every badge is a real place. The ring is its rarity — gray Common, blue Rare, violet Epic… gold LEGENDARY. Rarer = pricier = pays way more." },
-  { mode: 'dialog', target: '[data-tut="money"]', text: () => "Your two currencies: ESTATE is the real crypto token — it's what BUYS property. 💵 CASH is what your properties pay you — it runs the business: upgrades, renovations, staff." },
+  { mode: 'dialog', target: '[data-tut="money"]', text: () => "Your two currencies: $ESTATE is the real crypto token — it's what BUYS property. $ CASH is what your properties pay you — it runs the business: upgrades, renovations, staff." },
   { mode: 'dialog', text: () => "Enough talk. Rule #1 of real estate: your first deal should be CHEAP. Let me find you a bargain nobody owns yet… follow me!" },
   {
     mode: 'buy',
